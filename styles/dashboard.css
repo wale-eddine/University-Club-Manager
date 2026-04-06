@@ -1,0 +1,210 @@
+/* Space page title block from following content. */
+.page-title {
+    margin-bottom: 30px;
+}
+
+/* Style main heading inside page title. */
+.page-title h2 {
+    font-size: 32px;
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+/* Center page title content. */
+.page-title {
+    text-align: center;
+}
+
+/* Center text in main sections. */
+main section {
+    text-align: center;
+}
+
+/* Center card content on dashboard pages. */
+.card {
+    text-align: center;
+}
+
+/* Center card footer actions. */
+.card-footer {
+    justify-content: center;
+}
+
+/* Keep section-level buttons inline and centered. */
+main section > .btn {
+    display: inline-block;
+}
+
+/* Layout grouped action buttons with wrapping. */
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+/* Keep inline table forms compact. */
+table td form {
+    display: inline-flex;
+    margin: 0 6px 0 0;
+    vertical-align: middle;
+}
+
+/* Let requests table wrapper use full width. */
+.requests-table-wrap {
+    width: 100%;
+}
+
+/* Reserve room for action controls column. */
+.requests-table td:last-child {
+    min-width: 170px;
+}
+
+/* Style dashboard section card containers. */
+.dashboard-section {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+/* Style section heading with bottom divider. */
+.dashboard-section h3 {
+    margin-bottom: 15px;
+    color: var(--secondary);
+    border-bottom: 2px solid var(--primary);
+    padding-bottom: 10px;
+}
+
+/* Align heading text with optional action button. */
+.dashboard-section h3.section-heading-with-action {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+/* Keep heading action button compact. */
+.dashboard-section h3.section-heading-with-action .btn {
+    margin: 0;
+    white-space: nowrap;
+}
+
+/* Center section content within dashboard main area. */
+.dashboard-main .dashboard-section {
+    text-align: center;
+}
+
+/* Center dashboard section headings. */
+.dashboard-main .dashboard-section h3 {
+    text-align: center;
+}
+
+/* Keep primary section buttons centered. */
+.dashboard-main .dashboard-section > .btn,
+.dashboard-main .dashboard-section > p > .btn {
+    display: inline-block;
+}
+
+/* Center dashboard section paragraph text. */
+.dashboard-main .dashboard-section p {
+    text-align: center;
+}
+
+/* Center success button in section content. */
+.dashboard-main .dashboard-section .btn-success {
+    display: inline-block;
+    margin: 0 auto;
+}
+
+/* Style empty-state message block. */
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+/* Add spacing under empty-state paragraph. */
+.empty-state p {
+    margin-bottom: 20px;
+}
+
+/* Increase bottom spacing for home events section. */
+.home-events-section {
+    padding-bottom: 120px;
+}
+
+/* Add margin under home events CTA button. */
+.home-events-section > .btn {
+    margin-bottom: 20px;
+}
+
+/* Style create-club call-to-action area. */
+.create-club-cta {
+    margin-top: 30px;
+    text-align: center;
+    padding-bottom: 120px;
+}
+
+/* Add spacing under create-club CTA button. */
+.create-club-cta > .btn {
+    margin-bottom: 20px;
+}
+
+/* Add top spacing before club edit/delete controls. */
+.club-edit-delete-cta {
+    margin-top: 16px;
+}
+
+/* Constrain inner width for club edit/delete actions. */
+.club-edit-delete-cta-inner {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+/* Layout owner action buttons on club detail page. */
+.club-detail-owner-actions {
+    margin-top: 30px;
+    text-align: center;
+    padding-bottom: 160px;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+
+/* Remove extra bottom margin for owner action buttons. */
+.club-detail-owner-actions > .btn {
+    margin-bottom: 0;
+}
+
+/* Center summary section text. */
+.detail-summary-section {
+    text-align: center;
+}
+
+/* Center summary paragraph content. */
+.detail-summary-section p {
+    text-align: center;
+}
+
+/* Constrain compact action forms and center them. */
+.action-form-compact {
+    max-width: 340px;
+    margin: 20px auto 0;
+}
+
+/* Stack event action buttons vertically. */
+.event-action-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+}
+
+/* Set minimum width for stacked event buttons. */
+.event-action-stack .btn {
+    min-width: 240px;
+}

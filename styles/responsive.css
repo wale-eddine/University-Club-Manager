@@ -1,0 +1,392 @@
+/* Media Queries - Responsive Styles */
+
+/* Tablet breakpoint tweaks for events carousel. */
+@media (max-width: 992px) {
+    .events-carousel .carousel-slide {
+        min-width: 50%;
+    }
+}
+
+/* Mobile breakpoint: nav, layout, tables, and forms. */
+@media (max-width: 768px) {
+    /* Keep nav items in one row for mobile header. */
+    header nav {
+        flex-direction: row;
+        gap: 0;
+    }
+
+    /* Show mobile action icons near the menu toggle. */
+    .mobile-nav-actions {
+        display: inline-flex;
+    }
+
+    /* Increase mobile bell tap target size. */
+    .mobile-bell-link {
+        min-width: 34px;
+        min-height: 34px;
+    }
+
+    /* Hide desktop bell list item on mobile menu. */
+    .nav-links .decision-bell-item {
+        display: none;
+    }
+
+    /* Show and position hamburger menu button. */
+    .menu-toggle {
+        display: block;
+        position: relative;
+        z-index: 1300;
+    }
+
+    /* Prevent page scroll while mobile menu is open. */
+    body.nav-open {
+        overflow: hidden;
+    }
+
+    /* Animate first hamburger line into close icon. */
+    body.nav-open .menu-toggle span:nth-child(1) {
+        transform: translateY(8px) rotate(45deg);
+    }
+
+    /* Hide middle hamburger line in open state. */
+    body.nav-open .menu-toggle span:nth-child(2) {
+        opacity: 0;
+    }
+
+    /* Animate third hamburger line into close icon. */
+    body.nav-open .menu-toggle span:nth-child(3) {
+        transform: translateY(-8px) rotate(-45deg);
+    }
+
+    /* Build slide-in mobile nav panel. */
+    header nav > ul.nav-links {
+        position: fixed;
+        top: 0;
+        right: 0;
+        height: 100vh;
+        width: min(82vw, 320px);
+        background: var(--light);
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+        gap: 14px;
+        padding: 90px 24px 24px;
+        box-shadow: -8px 0 30px rgba(0, 0, 0, 0.22);
+        transform: translateX(100%);
+        transition: transform 0.25s ease;
+        z-index: 1200;
+    }
+
+    /* Reveal mobile nav panel when menu is open. */
+    body.nav-open header nav > ul.nav-links {
+        transform: translateX(0);
+    }
+
+    /* Expand each nav item to full panel width. */
+    header nav > ul.nav-links > li {
+        width: 100%;
+    }
+
+    /* Align top-level links and triggers for mobile. */
+    header nav > ul.nav-links > li > a,
+    .profile-trigger,
+    .account-trigger {
+        width: 100%;
+        justify-content: flex-start;
+        text-align: left;
+    }
+
+    /* Reset desktop brand offset on mobile. */
+    .brand-link {
+        margin-left: 0;
+    }
+
+    /* Normalize dropdown wrapper spacing on mobile. */
+    .profile-menu,
+    .account-menu {
+        margin-left: 0;
+        position: relative;
+    }
+
+    /* Align trigger content and reserve toggle space. */
+    .profile-trigger,
+    .account-trigger {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 10px;
+        width: 100%;
+        padding-right: 48px;
+    }
+
+    /* Position trigger underline away from dropdown toggle. */
+    .profile-trigger::after,
+    .account-trigger::after {
+        right: 48px;
+    }
+
+    /* Expand trigger underline while hovered/focused. */
+    .profile-trigger:hover::after,
+    .account-trigger:hover::after,
+    .profile-menu:focus-within .profile-trigger::after,
+    .account-menu:focus-within .account-trigger::after {
+        width: calc(100% - 48px);
+    }
+
+    /* Style mobile dropdown toggle button. */
+    .menu-dropdown-toggle {
+        position: absolute;
+        top: 2px;
+        right: 0;
+        width: 36px;
+        height: 36px;
+        border: 1px solid rgba(0, 0, 0, 0.16);
+        background: #fff;
+        color: var(--secondary);
+        border-radius: 8px;
+        font-size: 12px;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+        z-index: 2;
+    }
+
+    /* Highlight open/interactive dropdown toggle states. */
+    .menu-dropdown-toggle:hover,
+    .menu-dropdown-toggle:focus-visible {
+        background: rgba(31, 111, 235, 0.08);
+        border-color: rgba(31, 111, 235, 0.35);
+        outline: none;
+    }
+
+    /* Keep active dropdown toggle visually selected. */
+    .profile-menu.is-open .menu-dropdown-toggle,
+    .account-menu.is-open .menu-dropdown-toggle {
+        background: rgba(31, 111, 235, 0.1);
+        border-color: rgba(31, 111, 235, 0.4);
+        color: var(--primary);
+    }
+
+    /* Convert dropdowns to collapsible inline sections. */
+    .profile-dropdown,
+    .account-dropdown {
+        position: static;
+        visibility: visible;
+        transform: none;
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        min-width: 0;
+        background: transparent;
+        display: flex;
+        flex-direction: column;
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        transform: translateY(-4px);
+        transition: max-height 0.24s ease, opacity 0.2s ease, transform 0.2s ease;
+        margin-top: 0;
+    }
+
+    /* Expand dropdown content for open mobile menus. */
+    .profile-menu.is-open .profile-dropdown,
+    .account-menu.is-open .account-dropdown {
+        max-height: 220px;
+        opacity: 1;
+        transform: translateY(0);
+        margin-top: 6px;
+    }
+
+    /* Center dropdown links in mobile panel. */
+    .profile-dropdown a,
+    .account-dropdown a {
+        padding: 4px 0;
+        text-align: center;
+    }
+
+    /* Collapse card grids to a single column. */
+    .grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Reduce card image height on small screens. */
+    .club-card-image {
+        height: 220px;
+    }
+
+    /* Tighten carousel horizontal spacing on mobile. */
+    .club-carousel {
+        gap: 0;
+    }
+
+    /* Hide arrow controls for touch-first carousel use. */
+    .carousel-arrow {
+        display: none;
+    }
+
+    /* Stack search elements vertically on mobile. */
+    .search-box {
+        flex-direction: column;
+    }
+
+    /* Let search input use full available width. */
+    .search-box input {
+        max-width: 100%;
+    }
+
+    /* Reduce table typography size on mobile. */
+    table {
+        font-size: 14px;
+    }
+
+    /* Reduce table cell padding on mobile. */
+    table th,
+    table td {
+        padding: 10px;
+    }
+
+    /* Tighten section padding on club detail page. */
+    .club-detail-page .dashboard-section {
+        padding: 14px;
+    }
+
+    /* Ensure detail cover images scale cleanly on mobile. */
+    .club-detail-page .club-cover-image,
+    .event-detail-page .club-cover-image {
+        width: 100%;
+        max-width: 450px;
+        height: auto;
+        margin: 0 auto 14px;
+        object-fit: contain;
+    }
+
+    /* Tune table sizing inside club detail page. */
+    .club-detail-page table {
+        font-size: 13px;
+        width: 100%;
+    }
+
+    /* Keep detail table structure full width. */
+    .club-detail-page table thead,
+    .club-detail-page table tbody,
+    .club-detail-page table tr {
+        width: 100%;
+    }
+
+    /* Improve readability of narrow table cells. */
+    .club-detail-page table td,
+    .club-detail-page table th {
+        padding: 8px 6px;
+        word-break: break-word;
+        white-space: normal;
+    }
+
+    /* Keep table action forms inline and compact. */
+    .club-detail-page table td form {
+        display: inline-flex;
+        margin: 4px 0 0;
+    }
+
+    /* Reduce exclude button size for narrow layouts. */
+    .club-detail-page .exclude-btn {
+        font-size: 11px;
+        padding: 3px 7px;
+    }
+
+    /* Wrap card footer actions on small screens. */
+    .club-detail-page .card-footer {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    /* Remove forced left margin in wrapped actions. */
+    .club-detail-page .card-footer > .btn,
+    .club-detail-page .card-footer form {
+        margin-left: 0 !important;
+    }
+
+    /* Tighten spacing between owner action buttons. */
+    .club-detail-page .club-detail-owner-actions {
+        gap: 10px;
+        padding-bottom: 120px;
+    }
+
+    /* Make owner action buttons wider on mobile. */
+    .club-detail-page .club-detail-owner-actions > .btn {
+        width: 100%;
+        max-width: 320px;
+    }
+
+    /* Enable horizontal scroll for requests table wrapper. */
+    .requests-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 8px;
+    }
+
+    /* Set min width to preserve requests table layout. */
+    .requests-table {
+        min-width: 640px;
+        margin-bottom: 0;
+    }
+
+    /* Keep final requests table cell content in one line. */
+    .requests-table td:last-child {
+        white-space: nowrap;
+    }
+
+    /* Space inline forms inside requests action cell. */
+    .requests-table td:last-child form {
+        margin: 4px 6px 4px 0;
+    }
+
+    /* Enable horizontal scroll for detail manage table. */
+    .detail-manage-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 8px;
+    }
+
+    /* Set min width to preserve detail table layout. */
+    .detail-manage-table {
+        min-width: 640px;
+        margin-bottom: 0;
+    }
+
+    /* Keep final detail table column compact and readable. */
+    .detail-manage-table th:last-child,
+    .detail-manage-table td:last-child {
+        white-space: nowrap;
+    }
+
+    /* Reduce small button size in detail table. */
+    .detail-manage-table .btn-sm {
+        font-size: 11px;
+        padding: 3px 7px;
+    }
+
+    /* Decrease generic form padding on mobile. */
+    form {
+        padding: 20px;
+    }
+
+    /* Make generic cover image responsive on mobile. */
+    .club-cover-image {
+        width: 100%;
+        max-width: 100%;
+        margin-inline: 0;
+        margin-bottom: 16px;
+        object-fit: cover;
+    }
+
+    /* Expand stacked event action buttons to full width. */
+    .event-action-stack .btn {
+        min-width: 100%;
+        width: 100%;
+    }
+}

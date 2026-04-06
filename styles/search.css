@@ -1,0 +1,19 @@
+/* Layout search area with centered controls. */
+.search-box {
+    margin-bottom: 30px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+/* Center search form in the search container. */
+.search-box form {
+    justify-content: center;
+    margin: 0 auto;
+}
+
+/* Set flexible width with max input size. */
+.search-box input {
+    flex: 1;
+    max-width: 300px;
+}
