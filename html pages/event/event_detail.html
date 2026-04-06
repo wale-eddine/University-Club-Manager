@@ -1,0 +1,461 @@
+<?php $profileNotif = $profileNotif ?? getProfileRequestNotification(); ?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo htmlspecialchars($event_info['titre']); ?> - University Clubs</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/variables.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/layout.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/header-nav.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/buttons.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/forms.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/alerts.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/cards.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/carousel.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/badges.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/search.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/tables.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/dashboard.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/modals-popups.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/notifications.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/responsive.css')); ?>">
+</head>
+<body class="event-detail-page">
+    <header>
+        <div class="container">
+            <nav>
+                <h1><a href="../index.php" class="brand-link"><img src="<?php echo htmlspecialchars(phpRoute('../media/iit.png')); ?>" alt="IIT" class="brand-logo"> University Clubs</a></h1>
+                <button class="menu-toggle" type="button" aria-label="Ouvrir le menu" aria-controls="primary-nav" aria-expanded="false">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <ul id="primary-nav" class="nav-links">
+                    <li><a href="../index.php">Accueil</a></li>
+                    <li><a href="../club_php/clubs.php">Clubs</a></li>
+                    <li><a href="events.php">Événements</a></li>
+                    <?php if (isLoggedIn()): ?>
+<li><a href="../dashboard.php">Dashboard</a></li>
+                        <li class="profile-menu <?php echo $profileNotif['has_pending'] ? 'has-pending' : ''; ?>">
+    <a href="../profile_php/profile.php" class="profile-trigger"><img src="<?php echo htmlspecialchars(phpRoute('../media/profil.png')); ?>" alt="Profil" class="profile-icon"> Profil<?php if ($profileNotif['has_pending']): ?><span class="notif-dot"></span><?php endif; ?></a>
+    <ul class="profile-dropdown">
+        <?php if (!empty($profileNotif['can_view_requests'])): ?>
+        <li><a href="<?php echo htmlspecialchars($profileNotif['requests_link']); ?>">Demandes d'adhesion<?php if ($profileNotif['has_pending']): ?><span class="notif-count"><?php echo (int)$profileNotif['pending_count']; ?></span><?php endif; ?></a></li>
+        <?php endif; ?>
+        <li><a href="../profile_php/logout.php">Déconnexion</a></li>
+    </ul>
+</li>
+                    <?php else: ?>
+                        <li class="account-menu">
+                            <a href="../profile_php/login.php" class="account-trigger"><img src="<?php echo htmlspecialchars(phpRoute('../media/profil.png')); ?>" alt="Compte" class="profile-icon"> Compte</a>
+                            <ul class="account-dropdown">
+                                <li><a href="../profile_php/login.php">Connexion</a></li>
+                                <li><a href="../profile_php/register.php">Inscription</a></li>
+                            </ul>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="page-title">
+            <h2><?php echo htmlspecialchars($event_info['titre']); ?></h2>
+        </div>
+
+        <?php if (!empty($message)): ?>
+            <div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div>
+        <?php endif; ?>
+
+        <?php if (!empty($error)): ?>
+            <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
+
+        <div class="dashboard-section detail-summary-section">
+            <h3>À propos de l'Événement</h3>
+            <div class="club-cover-image-container">
+                <img src="<?php echo htmlspecialchars(!empty($event_info['image_path']) ? (phpRoute('../public/') . $event_info['image_path']) : phpRoute('../media/upcomingPLH.png')); ?>" alt="Image de <?php echo htmlspecialchars($event_info['titre']); ?>" class="club-cover-image">
+            </div>
+            <p><?php echo htmlspecialchars($event_info['description']); ?></p>
+            <p><strong>Club:</strong> <?php echo htmlspecialchars($event_info['club_nom']); ?></p>
+            <p><strong>Lieu:</strong> <?php echo htmlspecialchars($event_info['lieu']); ?></p>
+            <p><strong>Début:</strong> <?php echo date('d/m/Y H:i', strtotime($event_info['date_debut'])); ?></p>
+            <p><strong>Fin:</strong> <?php echo date('d/m/Y H:i', strtotime($event_info['date_fin'])); ?></p>
+            <p><strong>Participants:</strong> <span id="event-participants-count-summary"><?php echo count($participants); ?></span></p>
+            <?php if (isset($event_info['max_participants']) && $event_info['max_participants'] !== null): ?>
+                <p><strong>Capacité maximale:</strong> <?php echo (int)$event_info['max_participants']; ?></p>
+            <?php endif; ?>
+            <p><strong>Accès:</strong> <?php echo ((int)($event_info['allow_non_members'] ?? 0) === 1) ? 'Ouvert à tous' : 'Réservé aux membres du club'; ?></p>
+
+            <?php if (isLoggedIn()): ?>
+                <form method="POST" class="action-form-compact" style="text-align: center;">
+                    <div class="event-action-stack">
+                        <a href="../club_php/club_detail.php?id=<?php echo (int)$event_info['club_id']; ?>&from=event&event_id=<?php echo (int)$event_info['id']; ?>" class="btn btn-primary">Voir le club</a>
+
+                        <?php if ($is_club_owner): ?>
+                            <button type="submit" name="action" value="edit_event" class="btn btn-primary btn-grey-press">Modifier l'Événement</button>
+                        <?php endif; ?>
+
+                        <?php if ($is_participant): ?>
+                            <button type="submit" name="action" value="cancel" class="btn btn-outline-danger">Annuler l'Inscription</button>
+                        <?php else: ?>
+                            <?php if ((int)($event_info['allow_non_members'] ?? 0) === 1 || $is_club_member || $is_club_owner): ?>
+                                <button type="submit" name="action" value="join" class="btn btn-success">S'Inscrire à l'Événement</button>
+                            <?php else: ?>
+                                <span class="badge badge-primary">Réservé aux membres du club</span>
+                            <?php endif; ?>
+                        <?php endif; ?>
+
+                        <?php if (!$is_club_owner && !$is_club_member): ?>
+                            <?php if ($has_pending_club_request): ?>
+                                <button type="submit" name="action" value="cancel_join_club" class="btn btn-outline-danger">Annuler la Demande d'Adhesion Club</button>
+                            <?php elseif (($club_join_cooldown_seconds ?? 0) > 0): ?>
+                                <span class="badge badge-primary">Nouvelle demande possible dans <?php echo (int)ceil(((int)$club_join_cooldown_seconds) / 60); ?> min</span>
+                            <?php else: ?>
+                                <button type="submit" name="action" value="join_club" class="btn btn-outline-secondary">Rejoindre le Club</button>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
+                </form>
+
+            <?php else: ?>
+                <p style="margin-top: 20px;"><a href="../profile_php/login.php" class="btn btn-primary">Connexion pour S'Inscrire</a></p>
+            <?php endif; ?>
+        </div>
+
+        <div class="dashboard-section">
+            <h3 id="event-participants-heading" class="section-heading-with-action">
+                <span id="event-participants-count-heading">Participants (<?php echo count($participants); ?>)</span>
+                <?php if ($is_club_owner && count($participants) > 0): ?>
+                    <button type="button" id="manage-participants-btn" class="btn btn-primary btn-grey-press">Gérer les participants</button>
+                <?php endif; ?>
+            </h3>
+            <?php if (count($participants) > 0): ?>
+                <div class="detail-manage-table-wrap">
+                <table id="participants-table" class="detail-manage-table">
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Email</th>
+                            <th>Statut</th>
+                            <th class="sortable-column" aria-sort="<?php echo $participantSortOrder === 'asc' ? 'ascending' : 'descending'; ?>">
+                                <a class="sortable-header-link" href="<?php echo htmlspecialchars($participantSortUrl); ?>" title="Trier par date d'inscription">
+                                    Date d'Inscription <?php echo $participantSortIndicator; ?>
+                                </a>
+                            </th>
+                            <?php if ($is_club_owner): ?>
+                                <th class="participant-action-header" style="display: none;">Action</th>
+                            <?php endif; ?>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($participants as $p): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($p['prenom'] . ' ' . $p['nom']); ?></td>
+                                <td><?php echo htmlspecialchars($p['email']); ?></td>
+                                <td><?php echo htmlspecialchars($p['participant_role'] ?? 'Non membre'); ?></td>
+                                <td><?php echo date('d/m/Y H:i', strtotime($p['date_inscription'])); ?></td>
+                                <?php if ($is_club_owner): ?>
+                                    <td class="participant-action-cell" style="display: none;">
+                                        <?php if ((int)$p['id'] !== (int)$event_info['club_responsable_id']): ?>
+                                            <button type="button" class="participant-remove-btn btn btn-sm danger-outline-btn" data-user-id="<?php echo (int)$p['id']; ?>" style="display: none;">Retirer</button>
+                                        <?php else: ?>
+                                            <span class="badge badge-primary">Responsable</span>
+                                        <?php endif; ?>
+                                    </td>
+                                <?php endif; ?>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                </div>
+            <?php else: ?>
+                <p>Aucun participant pour l'instant.</p>
+            <?php endif; ?>
+
+            <?php if ($is_club_owner && count($participants) > 0): ?>
+                <div id="manage-participants-actions" style="display: none; text-align: center; justify-content: center; gap: 14px; margin-top: 15px;">
+                    <button type="button" id="validate-participants-btn" class="btn btn-primary">Valider</button>
+                    <button type="button" id="cancel-participants-btn" class="btn btn-outline-secondary">Annuler</button>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <p style="margin-top: 20px; text-align: center;">
+            <a href="<?php echo htmlspecialchars($returnUrl ?? 'events.php'); ?>" class="btn btn-outline-secondary"><?php echo htmlspecialchars($returnLabel ?? 'Retour aux événements'); ?></a>
+        </p>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Plateforme de Gestion des Clubs Universitaires. Tous droits réservés.</p>
+    </footer>
+
+    <div id="custom-delete-modal" class="custom-modal" style="display: none;">
+        <div class="custom-modal-overlay"></div>
+        <div class="custom-modal-content">
+            <div class="custom-modal-header">
+                <h3>Confirmation</h3>
+            </div>
+            <div class="custom-modal-body">
+                <p id="confirm-modal-message">Confirmer cette action ?</p>
+            </div>
+            <div class="custom-modal-footer">
+                <button type="button" id="delete-confirm-btn" class="btn btn-primary">Confirmer</button>
+                <button type="button" id="delete-cancel-btn" class="btn btn-outline-secondary">Annuler</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="<?php echo htmlspecialchars(phpRoute('../js/navbar.js')); ?>"></script>
+    <script src="<?php echo htmlspecialchars(phpRoute('../js/sortable-table.js')); ?>"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const deleteModal = document.getElementById('custom-delete-modal');
+            const deleteBtn = document.querySelector('.js-delete-event-btn');
+            const manageParticipantsBtn = document.getElementById('manage-participants-btn');
+            const manageParticipantsActions = document.getElementById('manage-participants-actions');
+            const validateParticipantsBtn = document.getElementById('validate-participants-btn');
+            const cancelParticipantsBtn = document.getElementById('cancel-participants-btn');
+            const participantRemoveButtons = document.querySelectorAll('.participant-remove-btn');
+            const participantActionHeader = document.querySelector('.participant-action-header');
+            const participantActionCells = document.querySelectorAll('.participant-action-cell');
+            const participantsCountSummary = document.getElementById('event-participants-count-summary');
+            const participantsCountHeading = document.getElementById('event-participants-count-heading');
+            const participantsTableBody = document.querySelector('#participants-table tbody');
+            const confirmBtn = document.getElementById('delete-confirm-btn');
+            const cancelBtn = document.getElementById('delete-cancel-btn');
+            const modalMessage = document.getElementById('confirm-modal-message');
+            let pendingConfirmCallback = null;
+            let participantsToRemove = new Set();
+
+            if (!deleteModal || !confirmBtn || !cancelBtn || !modalMessage) {
+                return;
+            }
+
+            function openConfirmModal(message, onConfirm, singleButton) {
+                modalMessage.textContent = message;
+                pendingConfirmCallback = onConfirm || null;
+                if (singleButton) {
+                    cancelBtn.style.display = 'none';
+                    confirmBtn.textContent = 'OK';
+                } else {
+                    cancelBtn.style.display = 'inline-block';
+                    confirmBtn.textContent = 'Confirmer';
+                }
+                deleteModal.style.display = 'flex';
+            }
+
+            function closeConfirmModal() {
+                deleteModal.style.display = 'none';
+                pendingConfirmCallback = null;
+            }
+
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const form = this.closest('form');
+                    openConfirmModal('Supprimer définitivement cet événement ?', function() {
+                        if (form) {
+                            form.submit();
+                        }
+                    }, false);
+                });
+            }
+
+            function setParticipantButtonState(btn, isSelected) {
+                if (isSelected) {
+                    btn.textContent = 'Retirer';
+                    btn.classList.add('is-selected');
+                } else {
+                    btn.textContent = 'Retirer';
+                    btn.classList.remove('is-selected');
+                }
+            }
+
+            if (manageParticipantsBtn && manageParticipantsActions) {
+                manageParticipantsBtn.addEventListener('click', function() {
+                    if (participantActionHeader) {
+                        participantActionHeader.style.display = 'table-cell';
+                    }
+                    participantActionCells.forEach(function(cell) {
+                        cell.style.display = 'table-cell';
+                    });
+                    participantRemoveButtons.forEach(function(btn) {
+                        btn.style.display = 'inline-block';
+                    });
+                    manageParticipantsActions.style.display = 'flex';
+                    manageParticipantsBtn.style.display = 'none';
+                });
+            }
+
+            participantRemoveButtons.forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const userId = this.getAttribute('data-user-id');
+                    if (!userId) {
+                        return;
+                    }
+
+                    if (participantsToRemove.has(userId)) {
+                        participantsToRemove.delete(userId);
+                        setParticipantButtonState(this, false);
+                    } else {
+                        participantsToRemove.add(userId);
+                        setParticipantButtonState(this, true);
+                    }
+                });
+            });
+
+            if (cancelParticipantsBtn) {
+                cancelParticipantsBtn.addEventListener('click', function() {
+                    resetParticipantsManagementMode();
+                });
+            }
+
+            function updateParticipantsCount(nextCount) {
+                if (participantsCountSummary) {
+                    participantsCountSummary.textContent = String(nextCount);
+                }
+                if (participantsCountHeading) {
+                    participantsCountHeading.textContent = 'Participants (' + nextCount + ')';
+                }
+            }
+
+            function resetParticipantsManagementMode() {
+                participantsToRemove.clear();
+                if (participantActionHeader) {
+                    participantActionHeader.style.display = 'none';
+                }
+                participantActionCells.forEach(function(cell) {
+                    cell.style.display = 'none';
+                });
+                participantRemoveButtons.forEach(function(btn) {
+                    btn.style.display = 'none';
+                    setParticipantButtonState(btn, false);
+                });
+                if (manageParticipantsActions) {
+                    manageParticipantsActions.style.display = 'none';
+                }
+                if (manageParticipantsBtn) {
+                    manageParticipantsBtn.style.display = 'inline-block';
+                }
+            }
+
+            if (validateParticipantsBtn) {
+                validateParticipantsBtn.addEventListener('click', function() {
+                    if (participantsToRemove.size === 0) {
+                        openConfirmModal('Aucun participant sélectionné.', null, true);
+                        return;
+                    }
+
+                    const count = participantsToRemove.size;
+                    const message = count === 1
+                        ? 'Êtes-vous sûr de vouloir retirer ce participant ?'
+                        : 'Êtes-vous sûr de vouloir retirer ' + count + ' participants ?';
+
+                    openConfirmModal(message, function() {
+                        const selectedIds = Array.from(participantsToRemove);
+                        const params = new URLSearchParams();
+                        params.append('action', 'remove_participants');
+                        params.append('ajax', '1');
+                        selectedIds.forEach(function(userId) {
+                            params.append('user_ids[]', userId);
+                        });
+
+                        if (validateParticipantsBtn) {
+                            validateParticipantsBtn.disabled = true;
+                        }
+
+                        fetch(window.location.href, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: params.toString()
+                        })
+                        .then(function(response) {
+                            return response.text();
+                        })
+                        .then(function(text) {
+                            try {
+                                return JSON.parse(text);
+                            } catch (e) {
+                                const jsonStart = text.indexOf('{');
+                                const jsonEnd = text.lastIndexOf('}');
+                                if (jsonStart !== -1 && jsonEnd > jsonStart) {
+                                    const maybeJson = text.slice(jsonStart, jsonEnd + 1);
+                                    try {
+                                        return JSON.parse(maybeJson);
+                                    } catch (ignored) {
+                                    }
+                                }
+                                const temp = document.createElement('div');
+                                temp.innerHTML = text;
+                                const successEl = temp.querySelector('.alert-success');
+                                const errorEl = temp.querySelector('.alert-danger');
+                                if (successEl) {
+                                    return {
+                                        success: true,
+                                        message: (successEl.textContent || '').trim()
+                                    };
+                                }
+                                if (errorEl) {
+                                    return {
+                                        success: false,
+                                        message: (errorEl.textContent || '').trim()
+                                    };
+                                }
+                                throw new Error('Réponse serveur invalide');
+                            }
+                        })
+                        .then(function(data) {
+                            if (!data || !data.success) {
+                                openConfirmModal((data && data.message) ? data.message : 'Impossible de retirer les participants selectionnes.', null, true);
+                                return;
+                            }
+
+                            selectedIds.forEach(function(userId) {
+                                const rowButton = document.querySelector('.participant-remove-btn[data-user-id="' + userId + '"]');
+                                const row = rowButton ? rowButton.closest('tr') : null;
+                                if (row) {
+                                    row.remove();
+                                }
+                            });
+
+                            const remainingRows = participantsTableBody ? participantsTableBody.querySelectorAll('tr').length : 0;
+                            updateParticipantsCount(remainingRows);
+                            resetParticipantsManagementMode();
+                            openConfirmModal(data.message || 'Participants retires avec succes.', null, true);
+                        })
+                        .catch(function() {
+                            openConfirmModal('Une erreur est survenue pendant le retrait des participants.', null, true);
+                        })
+                        .finally(function() {
+                            if (validateParticipantsBtn) {
+                                validateParticipantsBtn.disabled = false;
+                            }
+                        });
+                    }, false);
+                });
+            }
+
+            confirmBtn.addEventListener('click', function() {
+                const callback = pendingConfirmCallback;
+                closeConfirmModal();
+                if (callback && typeof callback === 'function') {
+                    callback();
+                }
+            });
+
+            cancelBtn.addEventListener('click', function() {
+                closeConfirmModal();
+            });
+        });
+    </script>
+</body>
+</html>

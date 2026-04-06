@@ -1,0 +1,175 @@
+<?php $profileNotif = $profileNotif ?? getProfileRequestNotification(); ?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Tableau de Bord - University Clubs</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/variables.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/layout.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/header-nav.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/buttons.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/forms.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/alerts.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/cards.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/carousel.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/badges.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/search.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/tables.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/dashboard.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/modals-popups.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/notifications.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/responsive.css')); ?>">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <h1><a href="index.php" class="brand-link"><img src="<?php echo htmlspecialchars(phpRoute('../media/iit.png')); ?>" alt="IIT" class="brand-logo"> University Clubs</a></h1>
+                <button class="menu-toggle" type="button" aria-label="Ouvrir le menu" aria-controls="primary-nav" aria-expanded="false">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <ul id="primary-nav" class="nav-links">
+                    <li><a href="index.php">Accueil</a></li>
+                    <li><a href="club_php/clubs.php">Clubs</a></li>
+                    <li><a href="event_php/events.php">Événements</a></li>
+                    <li><a href="dashboard.php">Dashboard</a></li>
+                    <li class="profile-menu <?php echo $profileNotif['has_pending'] ? 'has-pending' : ''; ?>">
+    <a href="profile_php/profile.php" class="profile-trigger"><img src="<?php echo htmlspecialchars(phpRoute('../media/profil.png')); ?>" alt="Profil" class="profile-icon"> Profil<?php if ($profileNotif['has_pending']): ?><span class="notif-dot"></span><?php endif; ?></a>
+    <ul class="profile-dropdown">
+        <?php if (!empty($profileNotif['can_view_requests'])): ?>
+        <li><a href="<?php echo htmlspecialchars($profileNotif['requests_link']); ?>">Demandes d'adhesion<?php if ($profileNotif['has_pending']): ?><span class="notif-count"><?php echo (int)$profileNotif['pending_count']; ?></span><?php endif; ?></a></li>
+        <?php endif; ?>
+        <li><a href="profile_php/logout.php">Déconnexion</a></li>
+    </ul>
+</li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container dashboard-main">
+
+        <div class="page-title">
+            <h2>Mon Tableau de Bord</h2>
+        </div>
+
+        <div class="dashboard-section">
+            <h3>Mes Clubs (<?php echo count($user_clubs); ?>)</h3>
+            <?php if (count($user_clubs) > 0): ?>
+                <div class="club-carousel events-carousel" data-events-carousel>
+                    <button type="button" class="carousel-arrow carousel-arrow-left" aria-label="Club précédent">&#10094;</button>
+                    <div class="carousel-viewport">
+                        <div class="carousel-track">
+                            <?php foreach ($user_clubs as $c): ?>
+                                <div class="carousel-slide">
+                                    <div class="card">
+                                        <?php if (!empty($c['image_path'])): ?>
+                                            <img src="<?php echo htmlspecialchars(phpRoute('../public/') . $c['image_path']); ?>" alt="Image de <?php echo htmlspecialchars($c['nom']); ?>" class="club-card-image">
+                                        <?php endif; ?>
+                                        <h3><?php echo htmlspecialchars($c['nom']); ?></h3>
+                                        <p><?php echo htmlspecialchars(substr($c['description'], 0, 100)) . '...'; ?></p>
+                                        <div class="card-footer">
+                                            <a href="club_php/club_detail.php?id=<?php echo $c['id']; ?>" class="btn btn-primary">Voir Détails</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <button type="button" class="carousel-arrow carousel-arrow-right" aria-label="Club suivant">&#10095;</button>
+                </div>
+            <?php else: ?>
+                <p>Vous n'avez rejoint aucun club pour l'instant.</p>
+                <a href="club_php/clubs.php" class="btn btn-primary">Découvrir les Clubs</a>
+            <?php endif; ?>
+        </div>
+
+        <div class="dashboard-section">
+            <h3>Mes Événements (<?php echo count($user_events); ?>)</h3>
+            <?php if (count($user_events) > 0): ?>
+                <div class="club-carousel events-carousel" data-events-carousel>
+                    <button type="button" class="carousel-arrow carousel-arrow-left" aria-label="Événement précédent">&#10094;</button>
+                    <div class="carousel-viewport">
+                        <div class="carousel-track">
+                            <?php foreach ($user_events as $e): ?>
+                                <div class="carousel-slide">
+                                    <div class="card">
+                                        <img src="<?php echo htmlspecialchars(!empty($e['image_path']) ? (phpRoute('../public/') . $e['image_path']) : phpRoute('../media/upcomingPLH.png')); ?>" alt="Image de <?php echo htmlspecialchars($e['titre']); ?>" class="club-card-image">
+                                        <h3><?php echo htmlspecialchars($e['titre']); ?></h3>
+                                        <p><strong>Club:</strong> <?php echo htmlspecialchars($e['club_nom']); ?></p>
+                                        <p><small>📅 <?php echo date('d/m/Y H:i', strtotime($e['date_debut'])); ?></small></p>
+                                        <?php if (isset($e['max_participants']) && $e['max_participants'] !== null): ?>
+                                            <p><small>👥 <?php echo (int)($e['participant_count'] ?? 0); ?>/<?php echo (int)$e['max_participants']; ?></small></p>
+                                        <?php else: ?>
+                                            <p><small>👥 <?php echo (int)($e['participant_count'] ?? 0); ?> inscrits</small></p>
+                                        <?php endif; ?>
+                                        <div class="card-footer">
+                                            <a href="event_php/event_detail.php?id=<?php echo $e['id']; ?>" class="btn btn-primary">Voir Détails</a>
+                                            <?php if ((int)($e['club_responsable_id'] ?? 0) === (int)getCurrentUserId()): ?>
+                                                <a href="event_php/event_edit.php?id=<?php echo (int)$e['id']; ?>&from=dashboard" class="btn btn-outline-secondary btn-grey-press">Modifier</a>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <button type="button" class="carousel-arrow carousel-arrow-right" aria-label="Événement suivant">&#10095;</button>
+                </div>
+            <?php else: ?>
+                <p>Vous n'êtes inscrit à aucun événement pour l'instant.</p>
+                <a href="event_php/events.php" class="btn btn-primary">Découvrir les Événements</a>
+            <?php endif; ?>
+        </div>
+
+        <?php if (count($responsable_clubs) > 0 || isAdmin()): ?>
+            <div class="dashboard-section">
+                <h3>Mes Clubs Responsable (<?php echo count($responsable_clubs); ?>)</h3>
+
+                <?php if (count($responsable_clubs) > 0): ?>
+                    <div class="club-carousel events-carousel" data-events-carousel>
+                        <button type="button" class="carousel-arrow carousel-arrow-left" aria-label="Club responsable précédent">&#10094;</button>
+                        <div class="carousel-viewport">
+                            <div class="carousel-track">
+                                <?php foreach ($responsable_clubs as $c): ?>
+                                    <div class="carousel-slide">
+                                        <div class="card">
+                                            <?php if (!empty($c['image_path'])): ?>
+                                                <img src="<?php echo htmlspecialchars(phpRoute('../public/') . $c['image_path']); ?>" alt="Image de <?php echo htmlspecialchars($c['nom']); ?>" class="club-card-image">
+                                            <?php endif; ?>
+                                            <h3><?php echo htmlspecialchars($c['nom']); ?></h3>
+                                            <p><?php echo htmlspecialchars(substr($c['description'], 0, 100)) . '...'; ?></p>
+                                            <div class="card-footer">
+                                                <a href="club_php/club_detail.php?id=<?php echo $c['id']; ?>" class="btn btn-primary">Voir Détails</a>
+                                                <a href="club_php/club_edit.php?id=<?php echo $c['id']; ?>&from=dashboard" class="btn btn-outline-secondary btn-grey-press">Modifier</a>
+                                                <a href="event_php/event_create.php?club_id=<?php echo (int)$c['id']; ?>" class="btn btn-success">Créer un Événement</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <button type="button" class="carousel-arrow carousel-arrow-right" aria-label="Club responsable suivant">&#10095;</button>
+                    </div>
+                <?php else: ?>
+                    <p>Vous n'êtes responsable d'aucun club pour l'instant.</p>
+                <?php endif; ?>
+
+                <?php if (isAdmin()): ?>
+                    <p><a href="club_php/club_create.php" class="btn btn-success">Créer un Club</a></p>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Plateforme de Gestion des Clubs Universitaires. Tous droits réservés.</p>
+    </footer>
+    <script src="<?php echo htmlspecialchars(phpRoute('../js/navbar.js')); ?>"></script>
+    <script src="<?php echo htmlspecialchars(phpRoute('../js/home-carousel.js')); ?>"></script>
+</body>
+</html>

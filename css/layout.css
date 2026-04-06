@@ -1,0 +1,18 @@
+/* Keep main content area flexible with footer spacing. */
+main {
+    flex: 1 0 auto;
+    width: 100%;
+    padding-bottom: 56px;
+}
+
+/* Add extra bottom spacing on club detail pages. */
+.club-detail-page main {
+    padding-bottom: 140px;
+}
+
+/* Constrain page content width and horizontal padding. */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}

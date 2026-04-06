@@ -1,0 +1,530 @@
+<?php $profileNotif = $profileNotif ?? getProfileRequestNotification(); ?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo htmlspecialchars($club_info['nom']); ?> - University Clubs</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/variables.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/layout.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/header-nav.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/buttons.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/forms.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/alerts.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/cards.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/carousel.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/badges.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/search.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/tables.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/dashboard.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/modals-popups.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/notifications.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../css/responsive.css')); ?>">
+</head>
+<body class="club-detail-page">
+    <header>
+        <div class="container">
+            <nav>
+                <h1><a href="../index.php" class="brand-link"><img src="<?php echo htmlspecialchars(phpRoute('../media/iit.png')); ?>" alt="IIT" class="brand-logo"> University Clubs</a></h1>
+                <button class="menu-toggle" type="button" aria-label="Ouvrir le menu" aria-controls="primary-nav" aria-expanded="false">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <ul id="primary-nav" class="nav-links">
+                    <li><a href="../index.php">Accueil</a></li>
+                    <li><a href="clubs.php">Clubs</a></li>
+                    <li><a href="../event_php/events.php">Événements</a></li>
+                    <?php if (isLoggedIn()): ?>
+<li><a href="../dashboard.php">Dashboard</a></li>
+                        <li class="profile-menu <?php echo $profileNotif['has_pending'] ? 'has-pending' : ''; ?>">
+    <a href="../profile_php/profile.php" class="profile-trigger"><img src="<?php echo htmlspecialchars(phpRoute('../media/profil.png')); ?>" alt="Profil" class="profile-icon"> Profil<?php if ($profileNotif['has_pending']): ?><span class="notif-dot"></span><?php endif; ?></a>
+    <ul class="profile-dropdown">
+        <?php if (!empty($profileNotif['can_view_requests'])): ?>
+        <li><a href="<?php echo htmlspecialchars($profileNotif['requests_link']); ?>">Demandes d'adhesion<?php if ($profileNotif['has_pending']): ?><span class="notif-count"><?php echo (int)$profileNotif['pending_count']; ?></span><?php endif; ?></a></li>
+        <?php endif; ?>
+        <li><a href="../profile_php/logout.php">Déconnexion</a></li>
+    </ul>
+</li>
+                    <?php else: ?>
+                        <li class="account-menu">
+                            <a href="../profile_php/login.php" class="account-trigger"><img src="<?php echo htmlspecialchars(phpRoute('../media/profil.png')); ?>" alt="Compte" class="profile-icon"> Compte</a>
+                            <ul class="account-dropdown">
+                                <li><a href="../profile_php/login.php">Connexion</a></li>
+                                <li><a href="../profile_php/register.php">Inscription</a></li>
+                            </ul>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="page-title">
+            <h2><?php echo htmlspecialchars($club_info['nom']); ?></h2>
+        </div>
+
+        <?php if (!empty($message)): ?>
+            <div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div>
+        <?php endif; ?>
+
+        <?php if (!empty($error)): ?>
+            <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
+
+        <div class="dashboard-section detail-summary-section">
+            <h3>À propos du Club</h3>
+            <?php if (!empty($club_info['image_path'])): ?>
+                <div class="club-cover-image-container">
+                    <img src="<?php echo htmlspecialchars(phpRoute('../public/') . $club_info['image_path']); ?>" alt="Image de <?php echo htmlspecialchars($club_info['nom']); ?>" class="club-cover-image">
+                </div>
+            <?php endif; ?>
+            <p><?php echo htmlspecialchars($club_info['description']); ?></p>
+            <p><strong>Responsable:</strong> <?php echo htmlspecialchars($club_info['prenom'] . ' ' . $club_info['responsable_nom']); ?></p>
+            <p><strong>Membres:</strong> <span id="club-members-count-summary"><?php echo count($members); ?></span></p>
+
+            <?php if (isLoggedIn()): ?>
+                <form method="POST" class="action-form-compact" style="text-align: center;">
+                    <div class="event-action-stack">
+                        <?php if ($is_member && !$is_owner): ?>
+                            <button type="submit" name="action" value="leave" class="btn btn-outline-danger">Quitter le Club</button>
+                        <?php elseif ($is_owner): ?>
+                            <p class="badge badge-primary">Vous êtes le responsable du club</p>
+                            <a href="club_edit.php?id=<?php echo $club_id; ?>" class="btn btn-primary btn-grey-press">Modifier le Club</a>
+                            <a href="club_requests.php?id=<?php echo $club_id; ?>" class="btn btn-primary btn-grey-press">Gérer les Demandes</a>
+                        <?php elseif ($has_pending_request): ?>
+                            <button type="submit" name="action" value="cancel_join" class="btn btn-outline-danger">Annuler la Demande</button>
+                        <?php elseif (($club_join_cooldown_seconds ?? 0) > 0): ?>
+                            <p class="badge badge-primary">Nouvelle demande possible dans <?php echo (int)ceil(((int)$club_join_cooldown_seconds) / 60); ?> min</p>
+                        <?php else: ?>
+                            <button type="submit" name="action" value="join" class="btn btn-primary">Rejoindre le Club</button>
+                        <?php endif; ?>
+                    </div>
+                </form>
+            <?php else: ?>
+                <p style="margin-top: 20px;"><a href="../profile_php/login.php" class="btn btn-primary">Connexion pour Rejoindre</a></p>
+            <?php endif; ?>
+        </div>
+
+        <div class="dashboard-section">
+            <h3 id="club-members-heading" class="section-heading-with-action">
+                <span id="club-members-count-heading">Membres (<?php echo count($members); ?>)</span>
+                <?php if ($is_owner && count($members) > 0): ?>
+                    <button type="button" id="manage-members-btn" class="btn btn-primary btn-grey-press">Gérer les membres</button>
+                <?php endif; ?>
+            </h3>
+            <?php if (count($members) > 0): ?>
+                <div class="detail-manage-table-wrap">
+                <table id="members-table" class="detail-manage-table">
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Email</th>
+                            <th>Rôle</th>
+                            <th class="sortable-column" aria-sort="<?php echo $memberSortOrder === 'asc' ? 'ascending' : 'descending'; ?>">
+                                <a class="sortable-header-link" href="<?php echo htmlspecialchars($memberSortUrl); ?>" title="Trier par date d'adhésion">
+                                    Adhésion <?php echo $memberSortIndicator; ?>
+                                </a>
+                            </th>
+                            <?php if ($is_owner): ?>
+                                <th class="member-action-header" style="display: none;">Actions</th>
+                            <?php endif; ?>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($members as $m): ?>
+                            <tr data-member-id="<?php echo (int)$m['id']; ?>" data-is-owner="<?php echo ((int)$m['id'] === (int)$club_info['responsable_id']) ? 'true' : 'false'; ?>">
+                                <td><?php echo htmlspecialchars($m['prenom'] . ' ' . $m['nom']); ?></td>
+                                <td><?php echo htmlspecialchars($m['email']); ?></td>
+                                <td>
+                                    <?php if ((int)$m['id'] === (int)$club_info['responsable_id']): ?>
+                                        <span class="badge badge-primary">Responsable</span>
+                                    <?php else: ?>
+                                        <span class="badge">Membre</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?php echo date('d/m/Y', strtotime($m['date_adhesion'])); ?></td>
+                                <?php if ($is_owner): ?>
+                                    <td class="member-actions" style="display: none;">
+                                        <?php if ((int)$m['id'] !== (int)$club_info['responsable_id']): ?>
+                                            <button type="button" class="exclude-btn btn btn-sm danger-outline-btn" data-member-id="<?php echo (int)$m['id']; ?>" style="display: none;">Exclure</button>
+                                        <?php else: ?>
+                                            <span class="badge badge-primary">Protégé</span>
+                                        <?php endif; ?>
+                                    </td>
+                                <?php endif; ?>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                </div>
+            <?php else: ?>
+                <p>Aucun membre pour l'instant.</p>
+            <?php endif; ?>
+
+            <?php if ($is_owner && count($members) > 0): ?>
+                <div id="manage-members-actions" style="display: none; text-align: center; justify-content: center; gap: 14px; margin-top: 15px;">
+                    <button type="button" id="validate-exclusions-btn" class="btn btn-primary">Valider</button>
+                    <button type="button" id="cancel-management-btn" class="btn btn-outline-secondary">Annuler</button>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <div class="dashboard-section">
+            <h3 class="section-heading-with-action">
+                <span>Événements du Club (<?php echo count($events); ?>)</span>
+                <?php if (isLoggedIn() && getCurrentUser()['id'] === $club_info['responsable_id']): ?>
+                    <a href="../event_php/event_create.php?club_id=<?php echo $club_id; ?>" class="btn btn-success">Créer un Événement</a>
+                <?php endif; ?>
+            </h3>
+            <?php if (count($events) > 0): ?>
+                <div class="club-carousel events-carousel" data-events-carousel>
+                    <button type="button" class="carousel-arrow carousel-arrow-left" aria-label="Événement précédent">&#10094;</button>
+                    <div class="carousel-viewport">
+                        <div class="carousel-track">
+                            <?php foreach ($events as $e): ?>
+                                <div class="carousel-slide">
+                                    <div class="card">
+                                        <img src="<?php echo htmlspecialchars(!empty($e['image_path']) ? (phpRoute('../public/') . $e['image_path']) : phpRoute('../media/upcomingPLH.png')); ?>" alt="Image de <?php echo htmlspecialchars($e['titre']); ?>" class="club-card-image">
+                                        <h3><?php echo htmlspecialchars($e['titre']); ?></h3>
+                                        <p><?php echo htmlspecialchars($e['description']); ?></p>
+                                        <p><small>📍 <?php echo htmlspecialchars($e['lieu']); ?></small></p>
+                                        <p><small>📅 <?php echo date('d/m/Y H:i', strtotime($e['date_debut'])); ?></small></p>
+                                        <?php if (isset($e['max_participants']) && $e['max_participants'] !== null): ?>
+                                            <p><small>👥 <?php echo (int)($e['participant_count'] ?? 0); ?>/<?php echo (int)$e['max_participants']; ?></small></p>
+                                        <?php else: ?>
+                                            <p><small>👥 <?php echo (int)($e['participant_count'] ?? 0); ?> inscrits</small></p>
+                                        <?php endif; ?>
+                                        <div class="card-footer">
+                                            <a href="../event_php/event_detail.php?id=<?php echo $e['id']; ?>" class="btn btn-primary">Voir Détails</a>
+                                            <?php if ($is_owner): ?>
+                                                <a href="../event_php/event_edit.php?id=<?php echo (int)$e['id']; ?>&from=club" class="btn btn-outline-secondary btn-grey-press">Modifier</a>
+                                                <form method="POST" style="display: inline; margin-left: 8px;">
+                                                    <input type="hidden" name="action" value="delete_event">
+                                                    <input type="hidden" name="event_id" value="<?php echo (int)$e['id']; ?>">
+                                                    <button type="submit" class="btn btn-outline-danger js-delete-event-btn" data-event-title="<?php echo htmlspecialchars($e['titre']); ?>">Supprimer</button>
+                                                </form>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <button type="button" class="carousel-arrow carousel-arrow-right" aria-label="Événement suivant">&#10095;</button>
+                </div>
+            <?php else: ?>
+                <p>Aucun événement pour l'instant.</p>
+            <?php endif; ?>
+        </div>
+
+        <p style="margin-top: 20px; text-align: center;">
+            <a href="<?php echo htmlspecialchars($returnUrl ?? 'clubs.php'); ?>" class="btn btn-outline-secondary"><?php echo htmlspecialchars($returnLabel ?? 'Retour aux clubs'); ?></a>
+        </p>
+
+    </main>
+
+    <!-- Custom Alert Modal -->
+    <div id="custom-alert-modal" class="custom-modal" style="display: none;">
+        <div class="custom-modal-overlay"></div>
+        <div class="custom-modal-content">
+            <div class="custom-modal-header">
+                <h3 id="alert-title">Confirmation</h3>
+            </div>
+            <div class="custom-modal-body">
+                <p id="alert-message"></p>
+            </div>
+            <div class="custom-modal-footer">
+                <button type="button" id="alert-confirm-btn" class="btn btn-primary">Confirmer</button>
+                <button type="button" id="alert-cancel-btn" class="btn btn-outline-secondary">Annuler</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Plateforme de Gestion des Clubs Universitaires. Tous droits réservés.</p>
+    </footer>
+    <script src="<?php echo htmlspecialchars(phpRoute('../js/navbar.js')); ?>"></script>
+    <script src="<?php echo htmlspecialchars(phpRoute('../js/sortable-table.js')); ?>"></script>
+    <script src="<?php echo htmlspecialchars(phpRoute('../js/home-carousel.js')); ?>"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const manageBtn = document.getElementById('manage-members-btn');
+            const validateBtn = document.getElementById('validate-exclusions-btn');
+            const cancelBtn = document.getElementById('cancel-management-btn');
+            const managementActions = document.getElementById('manage-members-actions');
+            const membersCountSummary = document.getElementById('club-members-count-summary');
+            const membersCountHeading = document.getElementById('club-members-count-heading');
+            
+            // Custom modal elements
+            const alertModal = document.getElementById('custom-alert-modal');
+            const alertTitle = document.getElementById('alert-title');
+            const alertMessage = document.getElementById('alert-message');
+            const alertConfirmBtn = document.getElementById('alert-confirm-btn');
+            const alertCancelBtn = document.getElementById('alert-cancel-btn');
+            const deleteEventButtons = document.querySelectorAll('.js-delete-event-btn');
+
+            let membersToExclude = new Set();
+            let isManagementMode = false;
+            let pendingConfirmCallback = null;
+
+            function getMemberUiRefs() {
+                return {
+                    excludeBtns: document.querySelectorAll('.exclude-btn'),
+                    memberActionHeader: document.querySelector('.member-action-header'),
+                    memberActionCells: document.querySelectorAll('.member-actions')
+                };
+            }
+
+            function applyManagementModeToCurrentTable() {
+                const refs = getMemberUiRefs();
+                refs.excludeBtns.forEach(btn => {
+                    btn.style.display = 'inline-block';
+                    const memberId = btn.getAttribute('data-member-id');
+                    setExcludeButtonState(btn, membersToExclude.has(memberId));
+                });
+                if (refs.memberActionHeader) {
+                    refs.memberActionHeader.style.display = 'table-cell';
+                }
+                refs.memberActionCells.forEach(cell => {
+                    cell.style.display = 'table-cell';
+                });
+            }
+
+            // Custom alert function
+            function showCustomAlert(title, message, onConfirm = null, singleButton = false) {
+                alertTitle.textContent = title;
+                alertMessage.textContent = message;
+                pendingConfirmCallback = onConfirm;
+                if (singleButton) {
+                    alertCancelBtn.style.display = 'none';
+                    alertConfirmBtn.textContent = 'OK';
+                } else {
+                    alertCancelBtn.style.display = 'inline-block';
+                    alertConfirmBtn.textContent = 'Confirmer';
+                }
+                alertModal.style.display = 'flex';
+            }
+
+            function hideCustomAlert() {
+                alertModal.style.display = 'none';
+                pendingConfirmCallback = null;
+            }
+
+            alertConfirmBtn.addEventListener('click', function() {
+                const callback = pendingConfirmCallback;
+                hideCustomAlert();
+                if (callback && typeof callback === 'function') {
+                    callback();
+                }
+            });
+
+            alertCancelBtn.addEventListener('click', function() {
+                hideCustomAlert();
+            });
+
+            deleteEventButtons.forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const form = this.closest('form');
+                    const eventTitle = this.getAttribute('data-event-title') || 'cet evenement';
+                    showCustomAlert(
+                        'Confirmer la suppression',
+                        `Supprimer definitivement l'evenement "${eventTitle}" ?`,
+                        function() {
+                            if (form) {
+                                form.submit();
+                            }
+                        }
+                    );
+                });
+            });
+
+            if (manageBtn) {
+                manageBtn.addEventListener('click', function() {
+                    applyManagementModeToCurrentTable();
+                    managementActions.style.display = 'flex';
+                    isManagementMode = true;
+                    manageBtn.style.display = 'none';
+                });
+            }
+
+            function setExcludeButtonState(btn, isSelected) {
+                if (isSelected) {
+                    btn.textContent = 'Exclure';
+                    btn.classList.add('is-selected');
+                } else {
+                    btn.textContent = 'Exclure';
+                    btn.classList.remove('is-selected');
+                }
+            }
+
+            document.addEventListener('click', function(e) {
+                const btn = e.target.closest('.exclude-btn');
+                if (!btn) {
+                    return;
+                }
+
+                e.preventDefault();
+                const memberId = btn.getAttribute('data-member-id');
+                const isSelected = membersToExclude.has(memberId);
+                if (isSelected) {
+                    membersToExclude.delete(memberId);
+                    setExcludeButtonState(btn, false);
+                } else {
+                    membersToExclude.add(memberId);
+                    setExcludeButtonState(btn, true);
+                }
+            });
+
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function() {
+                    resetManagementMode();
+                });
+            }
+
+            function updateMembersCount(nextCount) {
+                if (membersCountSummary) {
+                    membersCountSummary.textContent = String(nextCount);
+                }
+                if (membersCountHeading) {
+                    membersCountHeading.textContent = 'Membres (' + nextCount + ')';
+                }
+            }
+
+            function resetManagementMode() {
+                const refs = getMemberUiRefs();
+                membersToExclude.clear();
+                if (managementActions) {
+                    managementActions.style.display = 'none';
+                }
+                refs.excludeBtns.forEach(btn => {
+                    btn.style.display = 'none';
+                    setExcludeButtonState(btn, false);
+                });
+                if (refs.memberActionHeader) {
+                    refs.memberActionHeader.style.display = 'none';
+                }
+                refs.memberActionCells.forEach(cell => {
+                    cell.style.display = 'none';
+                });
+                isManagementMode = false;
+                if (manageBtn) {
+                    manageBtn.style.display = 'inline-block';
+                }
+            }
+
+            if (validateBtn) {
+                validateBtn.addEventListener('click', function() {
+                    if (membersToExclude.size === 0) {
+                        showCustomAlert('Attention', 'Aucun membre sélectionné.', null, true);
+                        return;
+                    }
+
+                    const memberCount = membersToExclude.size;
+                    const message = memberCount === 1 
+                        ? 'Êtes-vous sûr de vouloir exclure ce membre ?' 
+                        : `Êtes-vous sûr de vouloir exclure ${memberCount} membres ?`;
+                    
+                    showCustomAlert('Confirmer l\'exclusion', message, function() {
+                        const selectedIds = Array.from(membersToExclude);
+                        const params = new URLSearchParams();
+                        params.append('action', 'kick_members');
+                        params.append('ajax', '1');
+                        selectedIds.forEach(memberId => {
+                            params.append('user_ids[]', memberId);
+                        });
+
+                        if (validateBtn) {
+                            validateBtn.disabled = true;
+                        }
+
+                        fetch(window.location.href, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: params.toString()
+                        })
+                        .then(response => response.text())
+                        .then(text => {
+                            try {
+                                return JSON.parse(text);
+                            } catch (e) {
+                                const jsonStart = text.indexOf('{');
+                                const jsonEnd = text.lastIndexOf('}');
+                                if (jsonStart !== -1 && jsonEnd > jsonStart) {
+                                    const maybeJson = text.slice(jsonStart, jsonEnd + 1);
+                                    try {
+                                        return JSON.parse(maybeJson);
+                                    } catch (ignored) {
+                                    }
+                                }
+                                const temp = document.createElement('div');
+                                temp.innerHTML = text;
+                                const successEl = temp.querySelector('.alert-success');
+                                const errorEl = temp.querySelector('.alert-danger');
+                                if (successEl) {
+                                    return {
+                                        success: true,
+                                        message: (successEl.textContent || '').trim()
+                                    };
+                                }
+                                if (errorEl) {
+                                    return {
+                                        success: false,
+                                        message: (errorEl.textContent || '').trim()
+                                    };
+                                }
+                                throw new Error('Réponse serveur invalide');
+                            }
+                        })
+                        .then(data => {
+                            if (!data || !data.success) {
+                                showCustomAlert('Erreur', (data && data.message) ? data.message : 'Impossible d\'exclure les membres selectionnes.', null, true);
+                                return;
+                            }
+
+                            selectedIds.forEach(memberId => {
+                                const row = document.querySelector('tr[data-member-id="' + memberId + '"]');
+                                if (row) {
+                                    row.remove();
+                                }
+                            });
+
+                            const membersTableBody = document.querySelector('#members-table tbody');
+                            const remainingRows = membersTableBody ? membersTableBody.querySelectorAll('tr').length : 0;
+                            updateMembersCount(remainingRows);
+                            resetManagementMode();
+                            showCustomAlert('Succès', data.message || 'Membres exclus avec succès.', null, true);
+                        })
+                        .catch(() => {
+                            showCustomAlert('Erreur', 'Une erreur est survenue pendant l\'exclusion.', null, true);
+                        })
+                        .finally(() => {
+                            if (validateBtn) {
+                                validateBtn.disabled = false;
+                            }
+                        });
+                    });
+                });
+            }
+
+            document.addEventListener('sortableTable:replaced', function(event) {
+                const detail = event && event.detail ? event.detail : null;
+                if (!detail || detail.tableId !== 'members-table') {
+                    return;
+                }
+
+                if (isManagementMode) {
+                    applyManagementModeToCurrentTable();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
