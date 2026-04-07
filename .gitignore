@@ -1,0 +1,8 @@
+# Secrets
+config/google_oauth_client.json
+config/mail_credentials.php
+client_secret_*.json
+
+# Common local noise
+.vscode/
+*.log

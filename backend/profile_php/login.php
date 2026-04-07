@@ -2,6 +2,7 @@
 // Load session helpers, database access, and models used after login.
 require_once('../../classes/session.php');
 require_once('../../config/Database.php');
+require_once('../../config/google_oauth.php');
 require_once('../../classes/User.php');
 require_once('../../classes/MembershipRequest.php');
 require_once('../../classes/Event.php');
@@ -51,15 +52,37 @@ function normalizePostLoginRedirect($value) {
 // Initialize view state and redirect links.
 $error = '';
 $success = '';
+$pendingVerificationEmail = '';
+$showResendVerification = false;
+$emailValue = '';
 $redirectAfterLogin = normalizePostLoginRedirect($_GET['redirect'] ?? '');
+$oauthError = trim((string)($_GET['oauth_error'] ?? ''));
+$error = $oauthError !== '' ? $oauthError : $error;
+$resetStatus = trim((string)($_GET['reset_status'] ?? ''));
+if ($resetStatus === 'success') {
+    $success = 'Votre mot de passe a été réinitialisé. Vous pouvez maintenant vous connecter.';
+}
+$resendStatus = trim((string)($_GET['verification_status'] ?? ''));
+$resendStatusMessage = '';
+if ($resendStatus === 'sent') {
+    $resendStatusMessage = 'Un nouvel email de vérification a été envoyé. Vérifiez aussi le dossier spam.';
+} elseif ($resendStatus === 'already_verified') {
+    $resendStatusMessage = 'Cette adresse est déjà vérifiée. Vous pouvez vous connecter.';
+} elseif ($resendStatus === 'missing') {
+    $resendStatusMessage = 'Veuillez saisir votre email pour renvoyer le message de vérification.';
+}
 $registerHref = 'register.php' . ($redirectAfterLogin !== '' ? ('?redirect=' . urlencode($redirectAfterLogin)) : '');
+$googleLoginHref = phpRoute('profile_php/google_login.php') . ($redirectAfterLogin !== '' ? ('?redirect=' . urlencode($redirectAfterLogin)) : '');
+$isGoogleAuthConfigured = isGoogleOAuthConfigured();
 
 // Validate credentials, create session, and prepare dashboard notifications.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $redirectAfterLogin = normalizePostLoginRedirect($_POST['redirect'] ?? ($_GET['redirect'] ?? ''));
     $registerHref = 'register.php' . ($redirectAfterLogin !== '' ? ('?redirect=' . urlencode($redirectAfterLogin)) : '');
+    $googleLoginHref = phpRoute('profile_php/google_login.php') . ($redirectAfterLogin !== '' ? ('?redirect=' . urlencode($redirectAfterLogin)) : '');
 
     $email = trim($_POST['email'] ?? '');
+    $emailValue = $email;
     $password = $_POST['password'] ?? '';
 
     if (empty($email) || empty($password)) {
@@ -69,9 +92,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $connection = $db->getConnection();
         $user = new User($connection);
 
-        $result = $user->login($email, $password);
+        $authResult = $user->authenticateWithStatus($email, $password);
+        $result = $authResult['user'] ?? null;
 
-        if ($result) {
+        if (($authResult['status'] ?? 'invalid') === 'success' && $result) {
             // Persist authenticated user data in session.
             $_SESSION['user_id'] = $result['id'];
             $_SESSION['user'] = $result;
@@ -119,10 +143,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             header("Location: ../dashboard.php");
             exit();
+        } elseif (($authResult['status'] ?? 'invalid') === 'unverified') {
+            $pendingVerificationEmail = $email;
+            $showResendVerification = true;
+            $error = 'Veuillez vérifier votre email avant de vous connecter. Consultez votre boîte de réception et votre dossier spam.';
         } else {
             $error = 'Email ou mot de passe incorrect.';
         }
     }
+}
+
+if ($emailValue === '' && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $emailValue = trim((string)($_GET['email'] ?? ''));
 }
 
 // Render the login template.

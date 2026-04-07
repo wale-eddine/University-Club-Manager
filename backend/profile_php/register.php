@@ -2,7 +2,10 @@
 // Load session helpers, database connection, and user model.
 require_once('../../classes/session.php');
 require_once('../../config/Database.php');
+require_once('../../config/app.php');
+require_once('../../config/mail.php');
 require_once('../../classes/User.php');
+require_once('../../classes/EmailVerificationToken.php');
 
 // Prevent authenticated users from accessing registration page.
 redirectIfLoggedIn();
@@ -34,8 +37,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Cet email est déjà utilisé.';
         } else {
             if ($user->register($nom, $prenom, $email, $password)) {
-                $success = 'Inscription réussie! Veuillez vous connecter.';
-                header("Refresh: 2; url=login.php");
+                $createdUser = $user->getUserByEmail($email);
+                if ($createdUser) {
+                    $verificationModel = new EmailVerificationToken($connection);
+                    $rawToken = bin2hex(random_bytes(32));
+                    $expiresAt = date('Y-m-d H:i:s', time() + 24 * 3600);
+                    $verificationModel->createToken((int)$createdUser['id'], $createdUser['email'], $rawToken, $expiresAt);
+
+                    $verificationUrl = buildAppUrl('backend/profile_php/verify_email.php?token=' . urlencode($rawToken));
+                    $recipientName = trim((string)$createdUser['prenom'] . ' ' . (string)$createdUser['nom']);
+                    $sent = sendVerificationEmail($createdUser['email'], $recipientName, $verificationUrl);
+
+                    if ($sent) {
+                        $_SESSION['signup_verification_email'] = $createdUser['email'];
+                        $_SESSION['signup_verification_name'] = $recipientName;
+                        header('Location: ' . phpRoute('profile_php/verification_sent.php'));
+                        exit();
+                    } else {
+                        $error = 'Compte créé, mais l’email de vérification n’a pas pu être envoyé. Vérifiez la configuration mail du serveur.';
+                    }
+                } else {
+                    $error = 'Compte créé, mais impossible de préparer la vérification email.';
+                }
             } else {
                 $error = 'Erreur lors de l\'inscription.';
             }

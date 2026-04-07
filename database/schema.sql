@@ -6,7 +6,10 @@ CREATE TABLE USERS (
     nom VARCHAR(100) NOT NULL,
     prenom VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    mot_de_passe VARCHAR(255) NOT NULL,
+    mot_de_passe VARCHAR(255) NULL,
+    google_id VARCHAR(191) UNIQUE NULL,
+    avatar_url VARCHAR(255) NULL,
+    email_verified_at DATETIME NULL,
     role ENUM('admin', 'etudiant') DEFAULT 'etudiant',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -92,4 +95,34 @@ CREATE TABLE USER_NOTIFICATIONS (
     is_read TINYINT(1) NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES USERS(id)
+);
+
+CREATE TABLE PASSWORD_RESET_TOKENS (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    token_hash VARCHAR(255) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    used_at DATETIME NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES USERS(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_token_hash (token_hash),
+    INDEX idx_password_reset_email (email),
+    INDEX idx_password_reset_user (user_id)
+);
+
+CREATE TABLE EMAIL_VERIFICATION_TOKENS (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    token_hash VARCHAR(255) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    verified_at DATETIME NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES USERS(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_email_verification_token_hash (token_hash),
+    INDEX idx_email_verification_email (email),
+    INDEX idx_email_verification_user (user_id)
 );
