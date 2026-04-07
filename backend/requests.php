@@ -34,26 +34,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($requestId <= 0 || ($action !== 'approve' && $action !== 'reject')) {
         $error = 'Action invalide.';
     } else {
-        if ($action === 'approve') {
-            if ($membership->approveRequestForOwner($requestId, $userId)) {
-                $message = 'Demande approuvee.';
-            } else {
-                $error = 'Impossible d\'approuver cette demande.';
+        if (isAdmin()) {
+            if ($action === 'approve') {
+                if ($membership->approveRequestByAdmin($requestId)) {
+                    $message = 'Demande approuvee.';
+                } else {
+                    $error = 'Impossible d\'approuver cette demande.';
+                }
             }
-        }
 
-        if ($action === 'reject') {
-            if ($membership->rejectRequestForOwner($requestId, $userId)) {
-                $message = 'Demande refusee.';
-            } else {
-                $error = 'Impossible de refuser cette demande.';
+            if ($action === 'reject') {
+                if ($membership->rejectRequestByAdmin($requestId)) {
+                    $message = 'Demande refusee.';
+                } else {
+                    $error = 'Impossible de refuser cette demande.';
+                }
+            }
+        } else {
+            if ($action === 'approve') {
+                if ($membership->approveRequestForOwner($requestId, $userId)) {
+                    $message = 'Demande approuvee.';
+                } else {
+                    $error = 'Impossible d\'approuver cette demande.';
+                }
+            }
+
+            if ($action === 'reject') {
+                if ($membership->rejectRequestForOwner($requestId, $userId)) {
+                    $message = 'Demande refusee.';
+                } else {
+                    $error = 'Impossible de refuser cette demande.';
+                }
             }
         }
     }
 }
 
 // Fetch pending requests to display in the page.
-$pending_requests = $membership->getPendingRequestsForOwner($userId, $requestSortOrder);
+$pending_requests = isAdmin()
+    ? $membership->getPendingRequestsForAdmin($requestSortOrder)
+    : $membership->getPendingRequestsForOwner($userId, $requestSortOrder);
 
 // Render the requests template.
 include('../html pages/requests.html');

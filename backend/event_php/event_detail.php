@@ -56,7 +56,8 @@ $participantSortIndicator = $participantSortOrder === 'asc' ? '&uarr;' : '&darr;
 
 $participants = $event->getParticipants($event_id, $participantSortOrder);
 $is_participant = isLoggedIn() ? $event->isParticipant($event_id, getCurrentUserId()) : false;
-$is_club_owner = isLoggedIn() && (int)getCurrentUserId() === (int)$event_info['club_responsable_id'];
+$is_club_owner = isLoggedIn() && canManageClubById((int)$event_info['club_id']);
+$can_manage_event = isLoggedIn() && canManageClubById((int)$event_info['club_id']);
 $is_club_member = isLoggedIn() ? $club->isMember((int)$event_info['club_id'], getCurrentUserId()) : false;
 $has_pending_club_request = isLoggedIn() ? $membership->hasRequest((int)$event_info['club_id'], getCurrentUserId()) : false;
 $club_join_cooldown_seconds = isLoggedIn() ? $membership->getRequestCooldownSeconds((int)$event_info['club_id'], getCurrentUserId()) : 0;
@@ -140,9 +141,9 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Handle event join action with eligibility checks.
         if ($_POST['action'] === 'join' && !$is_participant) {
-            if (!$allows_non_members && !$is_club_member && !$is_club_owner) {
+            if (!$allows_non_members && !$is_club_member && !$can_manage_event) {
                 $error = 'Cet événement est réservé aux membres du club.';
-            } elseif ($rejoinCooldownSeconds > 0 && !$is_club_owner) {
+            } elseif ($rejoinCooldownSeconds > 0 && !$can_manage_event) {
                 $minutesLeft = (int)ceil($rejoinCooldownSeconds / 60);
                 $error = 'Vous devez attendre encore ' . $minutesLeft . ' minute(s) avant de vous réinscrire.';
             } elseif ($event->isEventFull($event_id)) {
@@ -172,11 +173,11 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Impossible de finaliser l\'inscription.';
             }
         // Redirect owner to event edit page.
-        } elseif ($_POST['action'] === 'edit_event' && $is_club_owner) {
+        } elseif ($_POST['action'] === 'edit_event' && $can_manage_event) {
             header("Location: ../event_php/event_edit.php?id=" . (int)$event_info['id'] . "&from=event");
             exit();
         // Handle join request to the parent club.
-        } elseif ($_POST['action'] === 'join_club' && !$is_club_member && !$is_club_owner && !$has_pending_club_request) {
+        } elseif ($_POST['action'] === 'join_club' && !$is_club_member && !$can_manage_event && !$has_pending_club_request) {
             $clubJoinCooldownSeconds = $membership->getRequestCooldownSeconds((int)$event_info['club_id'], getCurrentUserId());
 
             if ($clubJoinCooldownSeconds > 0) {
@@ -190,7 +191,7 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Impossible d\'envoyer la demande d\'adhésion.';
             }
         // Handle cancellation of pending club join request.
-        } elseif ($_POST['action'] === 'cancel_join_club' && !$is_club_member && !$is_club_owner && $has_pending_club_request) {
+        } elseif ($_POST['action'] === 'cancel_join_club' && !$is_club_member && !$can_manage_event && $has_pending_club_request) {
             if ($membership->cancelRequest((int)$event_info['club_id'], getCurrentUserId())) {
                 $message = 'Demande d\'adhésion annulée.';
                 $has_pending_club_request = false;
@@ -203,7 +204,7 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($event->removeParticipant($event_id, getCurrentUserId())) {
                 $message = 'Inscription annulée.';
                 $is_participant = false;
-                if (!$is_club_owner) {
+                if (!$can_manage_event) {
                     $event->setRejoinCooldown($event_id, getCurrentUserId(), 10);
                 }
 
@@ -227,7 +228,7 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Impossible d\'annuler l\'inscription.';
             }
         // Handle bulk participant removal by event owner.
-        } elseif ($_POST['action'] === 'remove_participants' && $is_club_owner) {
+        } elseif ($_POST['action'] === 'remove_participants' && $can_manage_event) {
             $rawUserIds = $_POST['user_ids'] ?? [];
             if (!is_array($rawUserIds)) {
                 $rawUserIds = [$rawUserIds];
@@ -239,7 +240,7 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $targetUserIds = [];
             foreach ($rawUserIds as $rawId) {
                 $targetId = (int)$rawId;
-                if ($targetId > 0 && $targetId !== (int)$event_info['club_responsable_id']) {
+                if ($targetId > 0 && !$club->isResponsible((int)$event_info['club_id'], $targetId)) {
                     $targetUserIds[$targetId] = $targetId;
                 }
             }
@@ -281,12 +282,12 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 respondJson(false, $error !== '' ? $error : 'Impossible de retirer les participants selectionnes.', 0);
             }
         // Handle single participant removal by event owner.
-        } elseif ($_POST['action'] === 'remove_participant' && $is_club_owner) {
+        } elseif ($_POST['action'] === 'remove_participant' && $can_manage_event) {
             $target_user_id = isset($_POST['user_id']) ? (int)$_POST['user_id'] : 0;
 
             if ($target_user_id <= 0) {
                 $error = 'Participant invalide.';
-            } elseif ($target_user_id === (int)$event_info['club_responsable_id']) {
+            } elseif ($club->isResponsible((int)$event_info['club_id'], $target_user_id)) {
                 $error = 'Le responsable ne peut pas être retiré.';
             } elseif (!$event->isParticipant($event_id, $target_user_id)) {
                 $error = 'Cet utilisateur n\'est pas inscrit à cet événement.';
@@ -303,7 +304,7 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Impossible de retirer ce participant.';
             }
         // Handle event deletion by owner.
-        } elseif ($_POST['action'] === 'delete_event' && $is_club_owner) {
+        } elseif ($_POST['action'] === 'delete_event' && $can_manage_event) {
             if ($event->deleteEvent($event_id)) {
                 header("Location: ../club_php/club_detail.php?id=" . (int)$event_info['club_id']);
                 exit();

@@ -38,6 +38,9 @@
                     <li><a href="../event_php/events.php">Événements</a></li>
                     <?php if (isLoggedIn()): ?>
 <li><a href="../dashboard.php">Dashboard</a></li>
+                        <?php if (isAdmin()): ?>
+                            <li><a href="../admin.php">Admin</a></li>
+                        <?php endif; ?>
                         <li class="profile-menu <?php echo $profileNotif['has_pending'] ? 'has-pending' : ''; ?>">
     <a href="../profile_php/profile.php" class="profile-trigger"><img src="<?php echo htmlspecialchars(phpRoute('../media/profil.png')); ?>" alt="Profil" class="profile-icon"> Profil<?php if ($profileNotif['has_pending']): ?><span class="notif-dot"></span><?php endif; ?></a>
     <ul class="profile-dropdown">
@@ -88,10 +91,14 @@
             <?php if (isLoggedIn()): ?>
                 <form method="POST" class="action-form-compact" style="text-align: center;">
                     <div class="event-action-stack">
-                        <?php if ($is_member && !$is_owner): ?>
+                        <?php if ($is_member && !$can_manage_club): ?>
                             <button type="submit" name="action" value="leave" class="btn btn-outline-danger">Quitter le Club</button>
-                        <?php elseif ($is_owner): ?>
+                        <?php elseif ($can_manage_club): ?>
+                            <?php if ($is_owner): ?>
                             <p class="badge badge-primary">Vous êtes le responsable du club</p>
+                            <?php else: ?>
+                            <p class="badge badge-primary">Vous gérez ce club en tant qu'admin</p>
+                            <?php endif; ?>
                             <a href="club_edit.php?id=<?php echo $club_id; ?>" class="btn btn-primary btn-grey-press">Modifier le Club</a>
                             <a href="club_requests.php?id=<?php echo $club_id; ?>" class="btn btn-primary btn-grey-press">Gérer les Demandes</a>
                         <?php elseif ($has_pending_request): ?>
@@ -111,7 +118,7 @@
         <div class="dashboard-section">
             <h3 id="club-members-heading" class="section-heading-with-action">
                 <span id="club-members-count-heading">Membres (<?php echo count($members); ?>)</span>
-                <?php if ($is_owner && count($members) > 0): ?>
+                <?php if ($can_manage_club && count($members) > 0): ?>
                     <button type="button" id="manage-members-btn" class="btn btn-primary btn-grey-press">Gérer les membres</button>
                 <?php endif; ?>
             </h3>
@@ -128,7 +135,7 @@
                                     Adhésion <?php echo $memberSortIndicator; ?>
                                 </a>
                             </th>
-                            <?php if ($is_owner): ?>
+                            <?php if ($can_manage_club): ?>
                                 <th class="member-action-header" style="display: none;">Actions</th>
                             <?php endif; ?>
                         </tr>
@@ -139,16 +146,16 @@
                                 <td><?php echo htmlspecialchars($m['prenom'] . ' ' . $m['nom']); ?></td>
                                 <td><?php echo htmlspecialchars($m['email']); ?></td>
                                 <td>
-                                    <?php if ((int)$m['id'] === (int)$club_info['responsable_id']): ?>
+                                    <?php if ((int)($m['is_responsable'] ?? 0) === 1): ?>
                                         <span class="badge badge-primary">Responsable</span>
                                     <?php else: ?>
                                         <span class="badge">Membre</span>
                                     <?php endif; ?>
                                 </td>
                                 <td><?php echo date('d/m/Y', strtotime($m['date_adhesion'])); ?></td>
-                                <?php if ($is_owner): ?>
+                                <?php if ($can_manage_club): ?>
                                     <td class="member-actions" style="display: none;">
-                                        <?php if ((int)$m['id'] !== (int)$club_info['responsable_id']): ?>
+                                        <?php if ((int)($m['is_responsable'] ?? 0) !== 1): ?>
                                             <button type="button" class="exclude-btn btn btn-sm danger-outline-btn" data-member-id="<?php echo (int)$m['id']; ?>" style="display: none;">Exclure</button>
                                         <?php else: ?>
                                             <span class="badge badge-primary">Protégé</span>
@@ -164,7 +171,7 @@
                 <p>Aucun membre pour l'instant.</p>
             <?php endif; ?>
 
-            <?php if ($is_owner && count($members) > 0): ?>
+            <?php if ($can_manage_club && count($members) > 0): ?>
                 <div id="manage-members-actions" style="display: none; text-align: center; justify-content: center; gap: 14px; margin-top: 15px;">
                     <button type="button" id="validate-exclusions-btn" class="btn btn-primary">Valider</button>
                     <button type="button" id="cancel-management-btn" class="btn btn-outline-secondary">Annuler</button>
@@ -175,7 +182,7 @@
         <div class="dashboard-section">
             <h3 class="section-heading-with-action">
                 <span>Événements du Club (<?php echo count($events); ?>)</span>
-                <?php if (isLoggedIn() && getCurrentUser()['id'] === $club_info['responsable_id']): ?>
+                <?php if (isLoggedIn() && $can_manage_club): ?>
                     <a href="../event_php/event_create.php?club_id=<?php echo $club_id; ?>" class="btn btn-success">Créer un Événement</a>
                 <?php endif; ?>
             </h3>
@@ -199,7 +206,7 @@
                                         <?php endif; ?>
                                         <div class="card-footer">
                                             <a href="../event_php/event_detail.php?id=<?php echo $e['id']; ?>" class="btn btn-primary">Voir Détails</a>
-                                            <?php if ($is_owner): ?>
+                                            <?php if ($can_manage_club): ?>
                                                 <a href="../event_php/event_edit.php?id=<?php echo (int)$e['id']; ?>&from=club" class="btn btn-outline-secondary btn-grey-press">Modifier</a>
                                                 <form method="POST" style="display: inline; margin-left: 8px;">
                                                     <input type="hidden" name="action" value="delete_event">

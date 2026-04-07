@@ -217,6 +217,17 @@ Important:
 3. Participer aux evenements disponibles.
 4. Pour un admin: gerer clubs, membres, demandes et evenements.
 
+## Panneau d'administration
+
+Le projet inclut maintenant une page reservee aux comptes `admin`:
+
+- Vue et modification de tous les utilisateurs.
+- Changement de role entre `etudiant` et `responsable`.
+- Attribution ou retrait d'un responsable sur un club.
+- Ajout direct d'un utilisateur dans un club sans validation du responsable.
+
+Acces depuis le dashboard admin ou directement via `backend/admin.php`.
+
 ## Configuration locale des secrets
 
 Deux fichiers locaux sont utilises pour le developpement:

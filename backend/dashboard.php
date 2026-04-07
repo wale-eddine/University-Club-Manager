@@ -15,9 +15,9 @@ $club = new Club($connection);
 $event = new Event($connection);
 
 $user_id = getCurrentUserId();
-$user_clubs = isAdmin() ? $club->getUserMemberOnlyClubs($user_id) : $club->getUserClubs($user_id);
-$responsable_clubs = $club->getResponsibleClubs($user_id);
-$user_events = $event->getUserEvents($user_id);
+$user_clubs = isAdmin() ? $club->getClubs() : $club->getUserClubs($user_id);
+$responsable_clubs = isAdmin() ? $club->getClubs() : $club->getResponsibleClubs($user_id);
+$user_events = isAdmin() ? $event->getAllEvents() : $event->getUserEvents($user_id);
 $dashboard_notifications = $_SESSION['dashboard_notifications'] ?? [];
 $dashboard_notification_count = count($dashboard_notifications);
 

@@ -7,8 +7,8 @@ require_once('../../classes/Club.php');
 // Require authentication before allowing club creation.
 redirectIfNotLoggedIn();
 
-// Restrict club creation to administrators.
-if (!isAdmin()) {
+// Restrict club creation to manager roles.
+if (!isManager()) {
     header("Location: dashboard.php");
     exit();
 }

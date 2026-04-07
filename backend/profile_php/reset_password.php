@@ -41,8 +41,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $connection = $db->getConnection();
         $userModel = new User($connection);
         $resetModel = new PasswordResetToken($connection);
+        $targetUser = $userModel->getUserById((int)$resetRow['user_id']);
 
-        if ($userModel->updatePassword((int)$resetRow['user_id'], $newPassword)) {
+        if (!$targetUser || (string)($targetUser['account_status'] ?? 'active') !== 'active') {
+            $error = 'Votre compte a ete desactive par un administrateur.';
+        } elseif ($userModel->updatePassword((int)$resetRow['user_id'], $newPassword)) {
             $resetModel->purgeTokensForUser((int)$resetRow['user_id']);
             header('Location: login.php?reset_status=success');
             exit();

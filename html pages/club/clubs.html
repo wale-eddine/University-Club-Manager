@@ -38,6 +38,9 @@
                     <li><a href="../event_php/events.php">Événements</a></li>
                     <?php if (isLoggedIn()): ?>
 <li><a href="../dashboard.php">Dashboard</a></li>
+                        <?php if (isAdmin()): ?>
+                            <li><a href="../admin.php">Admin</a></li>
+                        <?php endif; ?>
                         <li class="profile-menu <?php echo $profileNotif['has_pending'] ? 'has-pending' : ''; ?>">
     <a href="../profile_php/profile.php" class="profile-trigger"><img src="<?php echo htmlspecialchars(phpRoute('../media/profil.png')); ?>" alt="Profil" class="profile-icon"> Profil<?php if ($profileNotif['has_pending']): ?><span class="notif-dot"></span><?php endif; ?></a>
     <ul class="profile-dropdown">
@@ -98,7 +101,7 @@
             </div>
         <?php endif; ?>
 
-        <?php if (isLoggedIn() && isAdmin()): ?>
+        <?php if (isLoggedIn() && isManager()): ?>
             <div class="create-club-cta">
                 <a href="club_create.php" class="btn btn-success">Créer un Club</a>
             </div>

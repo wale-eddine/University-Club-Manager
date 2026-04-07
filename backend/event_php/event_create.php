@@ -24,7 +24,7 @@ $event = new Event($connection);
 
 $club_info = $club->getClubById($club_id);
 
-if (!$club_info || $club_info['responsable_id'] !== getCurrentUserId()) {
+if (!$club_info || !canManageClubById((int)$club_info['id'])) {
     header("Location: ../dashboard.php");
     exit();
 }

@@ -11,7 +11,7 @@ table {
 
 /* Style table header row colors. */
 table thead {
-    background-color: var(--secondary);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     color: white;
 }
 
@@ -36,7 +36,7 @@ table th.sortable-column .sortable-header-link {
 }
 
 table th.sortable-column .sortable-header-link:hover {
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: rgba(255, 255, 255, 0.12);
     text-decoration: none;
 }
 

@@ -256,6 +256,10 @@ if (!$user) {
     redirectToLoginWithOAuthError('Connexion Google impossible.');
 }
 
+if ((string)($user['account_status'] ?? 'active') !== 'active') {
+    redirectToLoginWithOAuthError('Votre compte a ete desactive par un administrateur.');
+}
+
 $_SESSION['user_id'] = $user['id'];
 $_SESSION['user'] = $user;
 

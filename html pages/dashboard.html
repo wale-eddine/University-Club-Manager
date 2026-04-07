@@ -37,6 +37,9 @@
                     <li><a href="club_php/clubs.php">Clubs</a></li>
                     <li><a href="event_php/events.php">Événements</a></li>
                     <li><a href="dashboard.php">Dashboard</a></li>
+                    <?php if (isAdmin()): ?>
+                        <li><a href="admin.php">Admin</a></li>
+                    <?php endif; ?>
                     <li class="profile-menu <?php echo $profileNotif['has_pending'] ? 'has-pending' : ''; ?>">
     <a href="profile_php/profile.php" class="profile-trigger"><img src="<?php echo htmlspecialchars(phpRoute('../media/profil.png')); ?>" alt="Profil" class="profile-icon"> Profil<?php if ($profileNotif['has_pending']): ?><span class="notif-dot"></span><?php endif; ?></a>
     <ul class="profile-dropdown">
@@ -57,8 +60,14 @@
             <h2>Mon Tableau de Bord</h2>
         </div>
 
+        <?php if (isAdmin()): ?>
+            <div class="dashboard-section" style="text-align: center; margin-bottom: 20px;">
+                <a href="admin.php" class="btn btn-success">Ouvrir le panneau d'administration</a>
+            </div>
+        <?php endif; ?>
+
         <div class="dashboard-section">
-            <h3>Mes Clubs (<?php echo count($user_clubs); ?>)</h3>
+            <h3><?php echo isAdmin() ? 'Tous les Clubs' : 'Mes Clubs'; ?> (<?php echo count($user_clubs); ?>)</h3>
             <?php if (count($user_clubs) > 0): ?>
                 <div class="club-carousel events-carousel" data-events-carousel>
                     <button type="button" class="carousel-arrow carousel-arrow-left" aria-label="Club précédent">&#10094;</button>
@@ -89,7 +98,7 @@
         </div>
 
         <div class="dashboard-section">
-            <h3>Mes Événements (<?php echo count($user_events); ?>)</h3>
+            <h3><?php echo isAdmin() ? 'Tous les Événements' : 'Mes Événements'; ?> (<?php echo count($user_events); ?>)</h3>
             <?php if (count($user_events) > 0): ?>
                 <div class="club-carousel events-carousel" data-events-carousel>
                     <button type="button" class="carousel-arrow carousel-arrow-left" aria-label="Événement précédent">&#10094;</button>
@@ -109,7 +118,7 @@
                                         <?php endif; ?>
                                         <div class="card-footer">
                                             <a href="event_php/event_detail.php?id=<?php echo $e['id']; ?>" class="btn btn-primary">Voir Détails</a>
-                                            <?php if ((int)($e['club_responsable_id'] ?? 0) === (int)getCurrentUserId()): ?>
+                                            <?php if (isAdmin() || (int)($e['club_responsable_id'] ?? 0) === (int)getCurrentUserId()): ?>
                                                 <a href="event_php/event_edit.php?id=<?php echo (int)$e['id']; ?>&from=dashboard" class="btn btn-outline-secondary btn-grey-press">Modifier</a>
                                             <?php endif; ?>
                                         </div>
@@ -128,7 +137,7 @@
 
         <?php if (count($responsable_clubs) > 0 || isAdmin()): ?>
             <div class="dashboard-section">
-                <h3>Mes Clubs Responsable (<?php echo count($responsable_clubs); ?>)</h3>
+                <h3><?php echo isAdmin() ? 'Clubs à superviser' : 'Mes Clubs Responsable'; ?> (<?php echo count($responsable_clubs); ?>)</h3>
 
                 <?php if (count($responsable_clubs) > 0): ?>
                     <div class="club-carousel events-carousel" data-events-carousel>
@@ -159,7 +168,7 @@
                     <p>Vous n'êtes responsable d'aucun club pour l'instant.</p>
                 <?php endif; ?>
 
-                <?php if (isAdmin()): ?>
+                <?php if (isManager()): ?>
                     <p><a href="club_php/club_create.php" class="btn btn-success">Créer un Club</a></p>
                 <?php endif; ?>
             </div>

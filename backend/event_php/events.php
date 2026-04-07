@@ -19,7 +19,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $events = !empty($search) ? $event->searchEvents($search) : $event->getAllEvents();
 
 // Load clubs owned by current user for quick event actions.
-$responsable_clubs = isLoggedIn() ? $club->getResponsibleClubs(getCurrentUserId()) : [];
+$responsable_clubs = [];
+if (isLoggedIn()) {
+    $responsable_clubs = isAdmin()
+        ? $club->getClubs()
+        : $club->getResponsibleClubs(getCurrentUserId());
+}
 
 // Render the events listing template.
 include('../../html pages/event/events.html');

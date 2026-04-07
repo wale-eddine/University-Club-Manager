@@ -38,6 +38,9 @@
                     <li><a href="events.php">Événements</a></li>
                     <?php if (isLoggedIn()): ?>
 <li><a href="../dashboard.php">Dashboard</a></li>
+                        <?php if (isAdmin()): ?>
+                            <li><a href="../admin.php">Admin</a></li>
+                        <?php endif; ?>
                         <li class="profile-menu <?php echo $profileNotif['has_pending'] ? 'has-pending' : ''; ?>">
     <a href="../profile_php/profile.php" class="profile-trigger"><img src="<?php echo htmlspecialchars(phpRoute('../media/profil.png')); ?>" alt="Profil" class="profile-icon"> Profil<?php if ($profileNotif['has_pending']): ?><span class="notif-dot"></span><?php endif; ?></a>
     <ul class="profile-dropdown">
@@ -95,21 +98,21 @@
                     <div class="event-action-stack">
                         <a href="../club_php/club_detail.php?id=<?php echo (int)$event_info['club_id']; ?>&from=event&event_id=<?php echo (int)$event_info['id']; ?>" class="btn btn-primary">Voir le club</a>
 
-                        <?php if ($is_club_owner): ?>
+                        <?php if ($can_manage_event): ?>
                             <button type="submit" name="action" value="edit_event" class="btn btn-primary btn-grey-press">Modifier l'Événement</button>
                         <?php endif; ?>
 
                         <?php if ($is_participant): ?>
                             <button type="submit" name="action" value="cancel" class="btn btn-outline-danger">Annuler l'Inscription</button>
                         <?php else: ?>
-                            <?php if ((int)($event_info['allow_non_members'] ?? 0) === 1 || $is_club_member || $is_club_owner): ?>
+                            <?php if ((int)($event_info['allow_non_members'] ?? 0) === 1 || $is_club_member || $can_manage_event): ?>
                                 <button type="submit" name="action" value="join" class="btn btn-success">S'Inscrire à l'Événement</button>
                             <?php else: ?>
                                 <span class="badge badge-primary">Réservé aux membres du club</span>
                             <?php endif; ?>
                         <?php endif; ?>
 
-                        <?php if (!$is_club_owner && !$is_club_member): ?>
+                        <?php if (!$can_manage_event && !$is_club_member): ?>
                             <?php if ($has_pending_club_request): ?>
                                 <button type="submit" name="action" value="cancel_join_club" class="btn btn-outline-danger">Annuler la Demande d'Adhesion Club</button>
                             <?php elseif (($club_join_cooldown_seconds ?? 0) > 0): ?>
@@ -129,7 +132,7 @@
         <div class="dashboard-section">
             <h3 id="event-participants-heading" class="section-heading-with-action">
                 <span id="event-participants-count-heading">Participants (<?php echo count($participants); ?>)</span>
-                <?php if ($is_club_owner && count($participants) > 0): ?>
+                <?php if ($can_manage_event && count($participants) > 0): ?>
                     <button type="button" id="manage-participants-btn" class="btn btn-primary btn-grey-press">Gérer les participants</button>
                 <?php endif; ?>
             </h3>
@@ -146,7 +149,7 @@
                                     Date d'Inscription <?php echo $participantSortIndicator; ?>
                                 </a>
                             </th>
-                            <?php if ($is_club_owner): ?>
+                            <?php if ($can_manage_event): ?>
                                 <th class="participant-action-header" style="display: none;">Action</th>
                             <?php endif; ?>
                         </tr>
@@ -158,7 +161,7 @@
                                 <td><?php echo htmlspecialchars($p['email']); ?></td>
                                 <td><?php echo htmlspecialchars($p['participant_role'] ?? 'Non membre'); ?></td>
                                 <td><?php echo date('d/m/Y H:i', strtotime($p['date_inscription'])); ?></td>
-                                <?php if ($is_club_owner): ?>
+                                <?php if ($can_manage_event): ?>
                                     <td class="participant-action-cell" style="display: none;">
                                         <?php if ((int)$p['id'] !== (int)$event_info['club_responsable_id']): ?>
                                             <button type="button" class="participant-remove-btn btn btn-sm danger-outline-btn" data-user-id="<?php echo (int)$p['id']; ?>" style="display: none;">Retirer</button>
@@ -176,7 +179,7 @@
                 <p>Aucun participant pour l'instant.</p>
             <?php endif; ?>
 
-            <?php if ($is_club_owner && count($participants) > 0): ?>
+            <?php if ($can_manage_event && count($participants) > 0): ?>
                 <div id="manage-participants-actions" style="display: none; text-align: center; justify-content: center; gap: 14px; margin-top: 15px;">
                     <button type="button" id="validate-participants-btn" class="btn btn-primary">Valider</button>
                     <button type="button" id="cancel-participants-btn" class="btn btn-outline-secondary">Annuler</button>

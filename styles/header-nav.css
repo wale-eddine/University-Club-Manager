@@ -140,6 +140,52 @@ header a:hover::after {
     width: 100%;
 }
 
+/* Give Admin nav item a bigger red pill style. */
+header nav > ul > li > a[href*="admin.php"] {
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(198, 40, 40, 0.42);
+    background: rgba(198, 40, 40, 0.12);
+    color: #b71c1c;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.25s ease, transform 0.2s ease;
+}
+
+header nav > ul > li > a[href*="admin.php"]::after,
+header nav > ul > li > a[href*="admin.php"]:hover::after {
+    width: 0;
+}
+
+/* Stronger pulse when Admin page is not active. */
+header nav > ul > li > a[href*="admin.php"]:not([aria-current="page"]) {
+    animation: adminNavPulse 1.9s ease-in-out infinite;
+}
+
+header nav > ul > li > a[href*="admin.php"]:not([aria-current="page"]):hover {
+    background: #c62828;
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+/* Active admin page: solid red, no pulse. */
+header nav > ul > li > a[href*="admin.php"][aria-current="page"] {
+    animation: none;
+    background: #c62828;
+    color: #fff;
+    box-shadow: 0 0 0 1px rgba(198, 40, 40, 0.35), 0 10px 22px rgba(198, 40, 40, 0.32);
+}
+
+@keyframes adminNavPulse {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(198, 40, 40, 0.05);
+    }
+    50% {
+        box-shadow: 0 0 0 5px rgba(198, 40, 40, 0.14), 0 8px 20px rgba(198, 40, 40, 0.28);
+    }
+}
+
 /* Disable underline effect for brand link. */
 .brand-link::after,
 .brand-link:hover::after {

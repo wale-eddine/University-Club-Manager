@@ -5,6 +5,7 @@ class Event {
     private $hasImageColumn = false;
     private $hasMaxParticipantsColumn = false;
     private $hasAllowNonMembersColumn = false;
+    private $hasSpecialIdColumn = false;
 
     // Check if a table exists in the current database.
     private function tableExists($tableName) {
@@ -60,6 +61,15 @@ class Event {
     // Ensure optional event columns exist before queries use them.
     private function ensureEventColumns() {
         try {
+            $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'special_id'");
+            $this->hasSpecialIdColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+
+            if (!$this->hasSpecialIdColumn) {
+                $this->db->exec("ALTER TABLE EVENTS ADD COLUMN special_id VARCHAR(255) NULL AFTER titre");
+                $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'special_id'");
+                $this->hasSpecialIdColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            }
+
             $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'image_path'");
             $this->hasImageColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
 
@@ -87,16 +97,40 @@ class Event {
                 $this->hasAllowNonMembersColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
             }
         } catch (Exception $e) {
+            $this->hasSpecialIdColumn = false;
             $this->hasImageColumn = false;
             $this->hasMaxParticipantsColumn = false;
             $this->hasAllowNonMembersColumn = false;
         }
     }
 
+    // Build special id using date/email/status format.
+    private function buildSpecialId($email, $status) {
+        $datePart = date('y/m/d');
+        $emailPart = preg_replace('/[^a-z0-9@._-]/i', '', strtolower((string)$email));
+        $statusPart = in_array($status, ['active', 'inactive'], true) ? $status : 'active';
+        return $datePart . '/' . $emailPart . '/' . $statusPart;
+    }
+
+    // Resolve one responsable email for club-scoped event special id.
+    private function getClubManagerEmail($clubId) {
+        $stmt = $this->db->prepare("SELECT u.email
+                                    FROM CLUBS c
+                                    JOIN USERS u ON u.id = c.responsable_id
+                                    WHERE c.id = ? LIMIT 1");
+        $stmt->execute([(int)$clubId]);
+        return (string)($stmt->fetchColumn() ?: 'unknown@club.local');
+    }
+
     // Create a new event with optional dynamic fields.
     public function createEvent($club_id, $titre, $description, $date_debut, $date_fin, $lieu, $image_path = null, $max_participants = null, $allow_non_members = 0) {
         $columns = ['club_id', 'titre', 'description', 'date_debut', 'date_fin', 'lieu'];
         $values = [$club_id, $titre, $description, $date_debut, $date_fin, $lieu];
+
+        if ($this->hasSpecialIdColumn) {
+            $columns[] = 'special_id';
+            $values[] = $this->buildSpecialId($this->getClubManagerEmail((int)$club_id), 'active');
+        }
 
         if ($this->hasImageColumn) {
             $columns[] = 'image_path';
@@ -120,8 +154,12 @@ class Event {
 
     // List events belonging to one club with participant counts.
     public function getClubEvents($club_id) {
-        $stmt = $this->db->prepare("SELECT e.*, 
-                                           (SELECT COUNT(*) FROM EVENT_PARTICIPANTS ep WHERE ep.event_id = e.id) AS participant_count
+                $stmt = $this->db->prepare("SELECT e.*, 
+                                                                                     (SELECT COUNT(*)
+                                                                                        FROM EVENT_PARTICIPANTS ep
+                                                                                        JOIN USERS u ON u.id = ep.user_id
+                                                                                        WHERE ep.event_id = e.id
+                                                                                            AND COALESCE(u.account_status, 'active') = 'active') AS participant_count
                                     FROM EVENTS e 
                                     WHERE e.club_id = ? 
                                     ORDER BY e.date_debut DESC");
@@ -131,8 +169,12 @@ class Event {
 
     // List all events with club and participant metadata.
     public function getAllEvents() {
-        $stmt = $this->db->prepare("SELECT e.*, c.nom as club_nom,
-                                           (SELECT COUNT(*) FROM EVENT_PARTICIPANTS ep WHERE ep.event_id = e.id) AS participant_count
+                $stmt = $this->db->prepare("SELECT e.*, c.nom as club_nom,
+                                                                                     (SELECT COUNT(*)
+                                                                                        FROM EVENT_PARTICIPANTS ep
+                                                                                        JOIN USERS u ON u.id = ep.user_id
+                                                                                        WHERE ep.event_id = e.id
+                                                                                            AND COALESCE(u.account_status, 'active') = 'active') AS participant_count
                                     FROM EVENTS e 
                                     JOIN CLUBS c ON e.club_id = c.id 
                                     ORDER BY e.date_debut DESC");
@@ -142,8 +184,12 @@ class Event {
 
     // Return events ordered by most recently created.
     public function getLatestCreatedEvents() {
-        $stmt = $this->db->prepare("SELECT e.*, c.nom as club_nom,
-                                           (SELECT COUNT(*) FROM EVENT_PARTICIPANTS ep WHERE ep.event_id = e.id) AS participant_count
+                $stmt = $this->db->prepare("SELECT e.*, c.nom as club_nom,
+                                                                                     (SELECT COUNT(*)
+                                                                                        FROM EVENT_PARTICIPANTS ep
+                                                                                        JOIN USERS u ON u.id = ep.user_id
+                                                                                        WHERE ep.event_id = e.id
+                                                                                            AND COALESCE(u.account_status, 'active') = 'active') AS participant_count
                                     FROM EVENTS e
                                     JOIN CLUBS c ON e.club_id = c.id
                                     ORDER BY e.created_at DESC");
@@ -246,6 +292,13 @@ class Event {
 
     // Register a user as participant in an event.
     public function addParticipant($event_id, $user_id) {
+        $statusStmt = $this->db->prepare("SELECT account_status FROM USERS WHERE id = ? LIMIT 1");
+        $statusStmt->execute([(int)$user_id]);
+        $status = (string)($statusStmt->fetchColumn() ?: 'inactive');
+        if ($status !== 'active') {
+            return false;
+        }
+
         $stmt = $this->db->prepare("INSERT INTO EVENT_PARTICIPANTS (event_id, user_id) 
                                     VALUES (?, ?)");
         return $stmt->execute([$event_id, $user_id]);
@@ -310,14 +363,22 @@ class Event {
 
     // Check if a user is currently participating in event.
     public function isParticipant($event_id, $user_id) {
-        $stmt = $this->db->prepare("SELECT id FROM EVENT_PARTICIPANTS WHERE event_id = ? AND user_id = ?");
+                $stmt = $this->db->prepare("SELECT ep.id
+                                                                        FROM EVENT_PARTICIPANTS ep
+                                                                        JOIN USERS u ON u.id = ep.user_id
+                                                                        WHERE ep.event_id = ? AND ep.user_id = ?
+                                                                            AND COALESCE(u.account_status, 'active') = 'active'");
         $stmt->execute([$event_id, $user_id]);
         return $stmt->rowCount() > 0;
     }
 
     // Count participants currently registered for event.
     public function getParticipantCount($event_id) {
-        $stmt = $this->db->prepare("SELECT COUNT(*) FROM EVENT_PARTICIPANTS WHERE event_id = ?");
+                $stmt = $this->db->prepare("SELECT COUNT(*)
+                                                                        FROM EVENT_PARTICIPANTS ep
+                                                                        JOIN USERS u ON u.id = ep.user_id
+                                                                        WHERE ep.event_id = ?
+                                                                            AND COALESCE(u.account_status, 'active') = 'active'");
         $stmt->execute([$event_id]);
         return (int)$stmt->fetchColumn();
     }
@@ -328,9 +389,11 @@ class Event {
             return false;
         }
 
-        $stmt = $this->db->prepare("SELECT e.max_participants, COUNT(ep.id) AS participant_count
+        $stmt = $this->db->prepare("SELECT e.max_participants,
+                           COUNT(CASE WHEN COALESCE(u.account_status, 'active') = 'active' THEN ep.id END) AS participant_count
                                     FROM EVENTS e
                                     LEFT JOIN EVENT_PARTICIPANTS ep ON ep.event_id = e.id
+                                    LEFT JOIN USERS u ON u.id = ep.user_id
                                     WHERE e.id = ?
                                     GROUP BY e.id, e.max_participants");
         $stmt->execute([$event_id]);
@@ -352,7 +415,7 @@ class Event {
                                            u.email,
                                            ep.date_inscription,
                                            CASE
-                                               WHEN c.responsable_id = u.id THEN 'Responsable'
+                                               WHEN cr.id IS NOT NULL THEN 'Responsable'
                                                WHEN cm.id IS NOT NULL THEN 'Membre'
                                                ELSE 'Non membre'
                                            END AS participant_role
@@ -361,7 +424,9 @@ class Event {
                                     JOIN EVENTS e ON ep.event_id = e.id
                                     JOIN CLUBS c ON e.club_id = c.id
                                     LEFT JOIN CLUB_MEMBERS cm ON cm.club_id = c.id AND cm.user_id = u.id
+                                    LEFT JOIN CLUB_RESPONSABLES cr ON cr.club_id = c.id AND cr.user_id = u.id
                                     WHERE ep.event_id = ?
+                                                                            AND COALESCE(u.account_status, 'active') = 'active'
                                     ORDER BY ep.date_inscription " . $orderDirection);
         $stmt->execute([$event_id]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -370,11 +435,16 @@ class Event {
     // List events linked to user as participant or owner.
     public function getUserEvents($user_id) {
         $stmt = $this->db->prepare("SELECT DISTINCT e.*, c.nom as club_nom, c.responsable_id as club_responsable_id,
-                                           (SELECT COUNT(*) FROM EVENT_PARTICIPANTS ep2 WHERE ep2.event_id = e.id) AS participant_count
+                                                                                     (SELECT COUNT(*)
+                                                                                        FROM EVENT_PARTICIPANTS ep2
+                                                                                        JOIN USERS u2 ON u2.id = ep2.user_id
+                                                                                        WHERE ep2.event_id = e.id
+                                                                                            AND COALESCE(u2.account_status, 'active') = 'active') AS participant_count
                                     FROM EVENTS e
                                     JOIN CLUBS c ON e.club_id = c.id
                                     LEFT JOIN EVENT_PARTICIPANTS ep ON e.id = ep.event_id AND ep.user_id = ?
-                                    WHERE ep.user_id IS NOT NULL OR c.responsable_id = ?
+                                    LEFT JOIN CLUB_RESPONSABLES cr ON cr.club_id = c.id AND cr.user_id = ?
+                                    WHERE ep.user_id IS NOT NULL OR cr.user_id IS NOT NULL
                                     ORDER BY e.date_debut DESC");
         $stmt->execute([$user_id, $user_id]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -382,8 +452,12 @@ class Event {
 
     // Search events by title or description text.
     public function searchEvents($query) {
-        $stmt = $this->db->prepare("SELECT e.*, c.nom as club_nom,
-                                           (SELECT COUNT(*) FROM EVENT_PARTICIPANTS ep WHERE ep.event_id = e.id) AS participant_count
+                $stmt = $this->db->prepare("SELECT e.*, c.nom as club_nom,
+                                                                                     (SELECT COUNT(*)
+                                                                                        FROM EVENT_PARTICIPANTS ep
+                                                                                        JOIN USERS u ON u.id = ep.user_id
+                                                                                        WHERE ep.event_id = e.id
+                                                                                            AND COALESCE(u.account_status, 'active') = 'active') AS participant_count
                                     FROM EVENTS e 
                                     JOIN CLUBS c ON e.club_id = c.id 
                                     WHERE (e.titre LIKE ? OR e.description LIKE ?)

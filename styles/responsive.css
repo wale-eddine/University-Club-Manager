@@ -284,6 +284,11 @@
         white-space: normal;
     }
 
+    .club-detail-page table thead {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: #ffffff;
+    }
+
     /* Keep table action forms inline and compact. */
     .club-detail-page table td form {
         display: inline-flex;

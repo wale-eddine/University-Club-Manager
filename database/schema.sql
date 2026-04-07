@@ -6,11 +6,14 @@ CREATE TABLE USERS (
     nom VARCHAR(100) NOT NULL,
     prenom VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
+    special_id VARCHAR(255) NULL,
     mot_de_passe VARCHAR(255) NULL,
     google_id VARCHAR(191) UNIQUE NULL,
     avatar_url VARCHAR(255) NULL,
     email_verified_at DATETIME NULL,
-    role ENUM('admin', 'etudiant') DEFAULT 'etudiant',
+    role ENUM('admin', 'responsable', 'etudiant') DEFAULT 'etudiant',
+    account_status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    inactive_reason VARCHAR(255) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -18,12 +21,23 @@ CREATE TABLE USERS (
 CREATE TABLE CLUBS (
     id INT PRIMARY KEY AUTO_INCREMENT,
     nom VARCHAR(150) NOT NULL,
+    special_id VARCHAR(255) NULL,
     description TEXT NOT NULL,
     image_path VARCHAR(255) NULL,
     responsable_id INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (responsable_id) REFERENCES USERS(id)
+);
+
+CREATE TABLE CLUB_RESPONSABLES (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    club_id INT NOT NULL,
+    user_id INT NOT NULL,
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (club_id) REFERENCES CLUBS(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES USERS(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_club_responsable (club_id, user_id)
 );
 
 CREATE TABLE CLUB_MEMBERS (
@@ -64,6 +78,7 @@ CREATE TABLE EVENTS (
     id INT PRIMARY KEY AUTO_INCREMENT,
     club_id INT NOT NULL,
     titre VARCHAR(200) NOT NULL,
+    special_id VARCHAR(255) NULL,
     description TEXT NOT NULL,
     image_path VARCHAR(255) NULL,
     date_debut DATETIME NOT NULL,

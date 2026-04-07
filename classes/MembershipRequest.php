@@ -47,6 +47,13 @@ class MembershipRequest {
 
     // Create or refresh a pending membership request.
     public function createRequest($club_id, $user_id) {
+        $statusStmt = $this->db->prepare("SELECT account_status FROM USERS WHERE id = ? LIMIT 1");
+        $statusStmt->execute([(int)$user_id]);
+        $status = (string)($statusStmt->fetchColumn() ?: 'inactive');
+        if ($status !== 'active') {
+            return false;
+        }
+
         $sql = "INSERT INTO MEMBERSHIP_REQUESTS (club_id, user_id, status";
         $sql .= $this->hasRequesterNotifiedColumn ? ", requester_notified" : "";
         $sql .= ") VALUES (?, ?, 'pending";
@@ -133,6 +140,7 @@ class MembershipRequest {
                                     FROM MEMBERSHIP_REQUESTS mr 
                                     JOIN USERS u ON mr.user_id = u.id 
                                     WHERE mr.club_id = ? AND mr.status = 'pending' 
+                                      AND COALESCE(u.account_status, 'active') = 'active'
                                     ORDER BY mr.created_at " . $orderDirection . ", mr.id " . $orderDirection);
         $stmt->execute([$club_id]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -145,9 +153,25 @@ class MembershipRequest {
                                     FROM MEMBERSHIP_REQUESTS mr
                                     JOIN USERS u ON mr.user_id = u.id
                                     JOIN CLUBS c ON mr.club_id = c.id
-                                    WHERE c.responsable_id = ? AND mr.status = 'pending'
+                                    JOIN CLUB_RESPONSABLES cr ON cr.club_id = c.id
+                                    WHERE cr.user_id = ? AND mr.status = 'pending'
+                                      AND COALESCE(u.account_status, 'active') = 'active'
                                     ORDER BY mr.created_at " . $orderDirection . ", c.nom ASC, mr.id " . $orderDirection);
         $stmt->execute([$owner_id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // List pending requests across all clubs for global admin moderation.
+    public function getPendingRequestsForAdmin($order = 'ASC') {
+        $orderDirection = strtoupper((string)$order) === 'DESC' ? 'DESC' : 'ASC';
+        $stmt = $this->db->prepare("SELECT mr.id, mr.club_id, u.id as user_id, u.nom, u.prenom, u.email, mr.created_at, c.nom AS club_nom
+                                    FROM MEMBERSHIP_REQUESTS mr
+                                    JOIN USERS u ON mr.user_id = u.id
+                                    JOIN CLUBS c ON mr.club_id = c.id
+                                    WHERE mr.status = 'pending'
+                                      AND COALESCE(u.account_status, 'active') = 'active'
+                                    ORDER BY mr.created_at " . $orderDirection . ", c.nom ASC, mr.id " . $orderDirection);
+        $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -189,8 +213,8 @@ class MembershipRequest {
 
             $stmt = $this->db->prepare("SELECT mr.club_id, mr.user_id
                                         FROM MEMBERSHIP_REQUESTS mr
-                                        JOIN CLUBS c ON mr.club_id = c.id
-                                        WHERE mr.id = ? AND mr.status = 'pending' AND c.responsable_id = ?");
+                                        JOIN CLUB_RESPONSABLES cr ON mr.club_id = cr.club_id
+                                        WHERE mr.id = ? AND mr.status = 'pending' AND cr.user_id = ?");
             $stmt->execute([$request_id, $owner_id]);
             $request = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -201,6 +225,13 @@ class MembershipRequest {
 
             $clubId = (int)$request['club_id'];
             $userId = (int)$request['user_id'];
+
+            $statusStmt = $this->db->prepare("SELECT account_status FROM USERS WHERE id = ? LIMIT 1");
+            $statusStmt->execute([$userId]);
+            if ((string)($statusStmt->fetchColumn() ?: 'inactive') !== 'active') {
+                $this->db->rollBack();
+                return false;
+            }
 
             $stmt = $this->db->prepare("UPDATE MEMBERSHIP_REQUESTS SET status = 'accepted'" . ($this->hasRequesterNotifiedColumn ? ", requester_notified = 0" : "") . " WHERE id = ?");
             $stmt->execute([$request_id]);
@@ -226,10 +257,68 @@ class MembershipRequest {
         }
 
         $stmt = $this->db->prepare("UPDATE MEMBERSHIP_REQUESTS mr
-                                    JOIN CLUBS c ON mr.club_id = c.id
+                                    JOIN CLUB_RESPONSABLES cr ON mr.club_id = cr.club_id
                                     SET " . $setClause . "
-                                    WHERE mr.id = ? AND mr.status = 'pending' AND c.responsable_id = ?");
+                                    WHERE mr.id = ? AND mr.status = 'pending' AND cr.user_id = ?");
         $stmt->execute([$request_id, $owner_id]);
+        return $stmt->rowCount() > 0;
+    }
+
+    // Approve a pending request by id for global admin moderation.
+    public function approveRequestByAdmin($request_id) {
+        try {
+            $this->db->beginTransaction();
+
+            $stmt = $this->db->prepare("SELECT club_id, user_id
+                                        FROM MEMBERSHIP_REQUESTS
+                                        WHERE id = ? AND status = 'pending'");
+            $stmt->execute([$request_id]);
+            $request = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$request) {
+                $this->db->rollBack();
+                return false;
+            }
+
+            $clubId = (int)$request['club_id'];
+            $userId = (int)$request['user_id'];
+
+            $statusStmt = $this->db->prepare("SELECT account_status FROM USERS WHERE id = ? LIMIT 1");
+            $statusStmt->execute([$userId]);
+            if ((string)($statusStmt->fetchColumn() ?: 'inactive') !== 'active') {
+                $this->db->rollBack();
+                return false;
+            }
+
+            $stmt = $this->db->prepare("UPDATE MEMBERSHIP_REQUESTS
+                                        SET status = 'accepted'" . ($this->hasRequesterNotifiedColumn ? ", requester_notified = 0" : "") . "
+                                        WHERE id = ? AND status = 'pending'");
+            $stmt->execute([$request_id]);
+
+            if ($stmt->rowCount() === 0) {
+                $this->db->rollBack();
+                return false;
+            }
+
+            $stmt = $this->db->prepare("INSERT IGNORE INTO CLUB_MEMBERS (club_id, user_id) VALUES (?, ?)");
+            $stmt->execute([$clubId, $userId]);
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            return false;
+        }
+    }
+
+    // Reject a pending request by id for global admin moderation.
+    public function rejectRequestByAdmin($request_id) {
+        $stmt = $this->db->prepare("UPDATE MEMBERSHIP_REQUESTS
+                                    SET status = 'rejected'" . ($this->hasRequesterNotifiedColumn ? ", requester_notified = 0" : "") . "
+                                    WHERE id = ? AND status = 'pending'");
+        $stmt->execute([$request_id]);
         return $stmt->rowCount() > 0;
     }
 

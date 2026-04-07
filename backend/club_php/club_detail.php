@@ -59,7 +59,8 @@ $events = $event->getClubEvents($club_id);
 $is_member = isLoggedIn() ? $club->isMember($club_id, getCurrentUserId()) : false;
 $has_pending_request = isLoggedIn() ? $membership->hasRequest($club_id, getCurrentUserId()) : false;
 $club_join_cooldown_seconds = isLoggedIn() ? $membership->getRequestCooldownSeconds($club_id, getCurrentUserId()) : 0;
-$is_owner = isLoggedIn() && getCurrentUserId() === (int)$club_info['responsable_id'];
+$is_owner = isLoggedIn() && (canManageClubById((int)$club_info['id']) || getCurrentUserId() === (int)$club_info['responsable_id']);
+$can_manage_club = isLoggedIn() && canManageClubById((int)$club_info['id']);
 
 // Build a contextual return link based on navigation source.
 $returnUrl = 'clubs.php';
@@ -191,7 +192,7 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Impossible de quitter le club.';
             }
         // Handle bulk member removal by club owner.
-        } elseif ($_POST['action'] === 'kick_members' && $is_owner) {
+        } elseif ($_POST['action'] === 'kick_members' && $can_manage_club) {
             $rawUserIds = $_POST['user_ids'] ?? [];
             if (!is_array($rawUserIds)) {
                 $rawUserIds = [$rawUserIds];
@@ -260,7 +261,7 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 respondJson(false, $error !== '' ? $error : 'Impossible d\'exclure les membres selectionnes.', 0);
             }
         // Handle single member removal by club owner.
-        } elseif ($_POST['action'] === 'kick' && $is_owner) {
+        } elseif ($_POST['action'] === 'kick' && $can_manage_club) {
             $target_user_id = isset($_POST['user_id']) ? (int)$_POST['user_id'] : 0;
             $eventRemovalCount = 0;
 
@@ -301,7 +302,7 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Impossible d\'exclure ce membre.';
             }
         // Handle event deletion requests from club owner.
-        } elseif ($_POST['action'] === 'delete_event' && $is_owner) {
+        } elseif ($_POST['action'] === 'delete_event' && $can_manage_club) {
             $event_id = isset($_POST['event_id']) ? (int)$_POST['event_id'] : 0;
             $event_info = $event_id > 0 ? $event->getEventById($event_id) : null;
 

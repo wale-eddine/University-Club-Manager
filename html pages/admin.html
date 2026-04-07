@@ -1,0 +1,1268 @@
+<?php $profileNotif = $profileNotif ?? getProfileRequestNotification(); ?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panneau Admin - University Clubs</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/variables.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/layout.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/header-nav.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/buttons.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/forms.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/alerts.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/cards.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/tables.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/dashboard.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/notifications.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/responsive.css')); ?>">
+    <style>
+        .dashboard-main {
+            padding-bottom: 40px;
+        }
+
+        .dashboard-section {
+            padding: 24px;
+            border-radius: 18px;
+        }
+
+        .dashboard-section h3 {
+            margin-bottom: 8px;
+        }
+
+        .admin-section-note {
+            margin-bottom: 18px;
+            color: #5b6472;
+        }
+
+        .admin-toolbar {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 12px;
+            align-items: end;
+            margin-bottom: 16px;
+        }
+
+        .admin-toolbar .form-group {
+            margin-bottom: 0;
+        }
+
+        .admin-table-wrap {
+            overflow-x: auto;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+            background: #fff;
+        }
+
+        .admin-table td,
+        .admin-table th {
+            vertical-align: top;
+            padding: 14px 16px;
+        }
+
+        .admin-table {
+            margin-bottom: 0;
+            table-layout: fixed;
+        }
+
+        .admin-table thead th {
+            white-space: nowrap;
+        }
+
+        .admin-table tbody td {
+            word-break: break-word;
+        }
+
+        .admin-table input,
+        .admin-table select {
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+            margin-bottom: 0;
+        }
+
+        .admin-table .row-actions {
+            min-width: 210px;
+        }
+
+        .admin-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            background: #eef2ff;
+            color: #3730a3;
+        }
+
+        .admin-badge.admin-badge--primary {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .admin-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .admin-actions .btn {
+            white-space: nowrap;
+        }
+
+        .user-save-btn {
+            display: none;
+        }
+
+        .user-save-btn.is-visible {
+            display: inline-flex;
+        }
+
+        .js-inactive-reason.is-hidden {
+            display: none;
+        }
+
+        .admin-hidden-forms {
+            display: none;
+        }
+
+        .admin-feedback {
+            display: none;
+            margin: 10px 0 14px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+        }
+
+        .admin-feedback.is-success {
+            display: block;
+            background: #e8f7ee;
+            color: #116b3a;
+            border: 1px solid #b7e6c8;
+        }
+
+        .admin-feedback.is-error {
+            display: block;
+            background: #fdecec;
+            color: #8d1f1f;
+            border: 1px solid #f5c2c2;
+        }
+
+        #users-admin-table td:nth-child(1) { width: 70px; }
+        #users-admin-table td:nth-child(2) { width: 22%; }
+        #users-admin-table td:nth-child(3) { width: 24%; }
+        #users-admin-table td:nth-child(4) { width: 16%; }
+        #users-admin-table td:nth-child(5) { width: 18%; }
+        #users-admin-table td:nth-child(6) { width: 20%; }
+
+        #clubs-admin-table td:nth-child(1) { width: 26%; }
+        #clubs-admin-table td:nth-child(2) { width: 34%; }
+        #clubs-admin-table td:nth-child(3) { width: 40%; }
+
+        #direct-membership-table td {
+            vertical-align: middle;
+        }
+
+        .direct-user-picker {
+            position: relative;
+        }
+
+        .direct-user-options {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: #ffffff;
+            border: 1px solid #d7deea;
+            border-radius: 10px;
+            box-shadow: 0 12px 22px rgba(15, 23, 42, 0.12);
+            max-height: 240px;
+            overflow-y: auto;
+            z-index: 20;
+            padding: 6px;
+        }
+
+        .direct-user-option {
+            width: 100%;
+            text-align: left;
+            border: 0;
+            background: transparent;
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 0.94rem;
+            cursor: pointer;
+        }
+
+        .direct-user-option:hover,
+        .direct-user-option.is-active {
+            background: #eef4ff;
+            color: #1f3b8f;
+        }
+
+        .direct-user-empty {
+            padding: 8px 10px;
+            font-size: 0.9rem;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <h1><a href="dashboard.php" class="brand-link"><img src="<?php echo htmlspecialchars(phpRoute('../media/iit.png')); ?>" alt="IIT" class="brand-logo"> University Clubs</a></h1>
+                <button class="menu-toggle" type="button" aria-label="Ouvrir le menu" aria-controls="primary-nav" aria-expanded="false">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <ul id="primary-nav" class="nav-links">
+                    <li><a href="index.php">Accueil</a></li>
+                    <li><a href="club_php/clubs.php">Clubs</a></li>
+                    <li><a href="event_php/events.php">Événements</a></li>
+                    <li><a href="dashboard.php">Dashboard</a></li>
+                    <li><a href="admin.php" aria-current="page">Admin</a></li>
+                    <li class="profile-menu <?php echo $profileNotif['has_pending'] ? 'has-pending' : ''; ?>">
+                        <a href="profile_php/profile.php" class="profile-trigger"><img src="<?php echo htmlspecialchars(phpRoute('../media/profil.png')); ?>" alt="Profil" class="profile-icon"> Profil<?php if ($profileNotif['has_pending']): ?><span class="notif-dot"></span><?php endif; ?></a>
+                        <ul class="profile-dropdown">
+                            <?php if (!empty($profileNotif['can_view_requests'])): ?>
+                                <li><a href="<?php echo htmlspecialchars($profileNotif['requests_link']); ?>">Demandes d'adhesion<?php if ($profileNotif['has_pending']): ?><span class="notif-count"><?php echo (int)$profileNotif['pending_count']; ?></span><?php endif; ?></a></li>
+                            <?php endif; ?>
+                            <li><a href="profile_php/logout.php">Déconnexion</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container dashboard-main">
+        <div class="page-title">
+            <h2>Panneau d'administration</h2>
+        </div>
+
+        <?php if (!empty($success)): ?>
+            <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
+        <?php endif; ?>
+
+        <?php if (!empty($error)): ?>
+            <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
+
+        <div class="dashboard-section">
+            <h3>Utilisateurs</h3>
+            <p class="admin-section-note">Choisissez un role et/ou un statut, ou utilisez la recherche pour afficher les utilisateurs. Votre propre compte admin est volontairement masqué.</p>
+            <div id="users-section-feedback" class="admin-feedback"></div>
+
+            <div class="admin-toolbar">
+                <div class="form-group">
+                    <label for="user-search">Recherche</label>
+                    <input type="text" id="user-search" placeholder="Nom, prénom, email...">
+                </div>
+                <div class="form-group">
+                    <label for="role-filter">Rôle</label>
+                    <select id="role-filter">
+                        <option value="none" selected>Aucun</option>
+                        <option value="etudiant">Étudiant</option>
+                        <option value="responsable">Responsable</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="status-filter">Statut</label>
+                    <select id="status-filter">
+                        <option value="none" selected>Aucun</option>
+                        <option value="active">Actif</option>
+                        <option value="inactive">Inactif</option>
+                    </select>
+                </div>
+            </div>
+
+            <p id="users-table-empty-state" class="admin-section-note">Select a role, status, or search to display users.</p>
+
+            <div class="admin-table-wrap" id="users-admin-table-wrap" style="display: none;">
+                <table class="admin-table" id="users-admin-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom</th>
+                            <th>Email</th>
+                            <th>Rôle</th>
+                            <th>Statut</th>
+                            <th>Modifier</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($users as $user): ?>
+                            <tr data-role="<?php echo htmlspecialchars($user['role']); ?>" data-status="<?php echo htmlspecialchars((string)($user['account_status'] ?? 'active')); ?>" data-search="<?php echo htmlspecialchars(strtolower(trim((string)$user['prenom'] . ' ' . (string)$user['nom'] . ' ' . (string)$user['email'] . ' ' . (string)$user['role'] . ' ' . (string)($user['account_status'] ?? 'active')))); ?>">
+                                <td><?php echo (int)$user['id']; ?></td>
+                                <td>
+                                    <input type="text" class="admin-input-stack" form="user-form-<?php echo (int)$user['id']; ?>" name="prenom" value="<?php echo htmlspecialchars($user['prenom']); ?>" required>
+                                    <input type="text" class="admin-input-stack" form="user-form-<?php echo (int)$user['id']; ?>" name="nom" value="<?php echo htmlspecialchars($user['nom']); ?>" required>
+                                </td>
+                                <td>
+                                    <input type="email" class="admin-input-stack" form="user-form-<?php echo (int)$user['id']; ?>" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required>
+                                </td>
+                                <td>
+                                    <?php if ($user['role'] === 'admin'): ?>
+                                        <span class="admin-badge admin-badge--primary">admin</span>
+                                        <input type="hidden" form="user-form-<?php echo (int)$user['id']; ?>" name="role" value="admin">
+                                    <?php else: ?>
+                                        <select class="admin-input-stack" form="user-form-<?php echo (int)$user['id']; ?>" name="role" required>
+                                            <option value="etudiant" <?php echo $user['role'] === 'etudiant' ? 'selected' : ''; ?>>etudiant</option>
+                                            <option value="responsable" <?php echo $user['role'] === 'responsable' ? 'selected' : ''; ?>>responsable</option>
+                                        </select>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <select class="admin-input-stack js-status-select" form="user-form-<?php echo (int)$user['id']; ?>" name="account_status" data-user-id="<?php echo (int)$user['id']; ?>">
+                                        <option value="active" <?php echo (($user['account_status'] ?? 'active') === 'active') ? 'selected' : ''; ?>>active</option>
+                                        <option value="inactive" <?php echo (($user['account_status'] ?? 'active') === 'inactive') ? 'selected' : ''; ?>>inactive</option>
+                                    </select>
+                                    <input type="text" class="admin-input-stack js-inactive-reason" form="user-form-<?php echo (int)$user['id']; ?>" name="inactive_reason" data-user-id="<?php echo (int)$user['id']; ?>" value="<?php echo htmlspecialchars((string)($user['inactive_reason'] ?? '')); ?>" placeholder="Raison si inactif" <?php echo (($user['account_status'] ?? 'active') === 'inactive') ? 'required' : ''; ?>>
+                                </td>
+                                <td class="row-actions">
+                                    <div class="admin-actions">
+                                        <input type="password" class="admin-input-stack" form="user-form-<?php echo (int)$user['id']; ?>" name="password" placeholder="Nouveau mot de passe">
+                                        <button type="submit" form="user-form-<?php echo (int)$user['id']; ?>" class="btn btn-primary btn-sm user-save-btn" data-user-id="<?php echo (int)$user['id']; ?>">Enregistrer</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="admin-hidden-forms">
+                <?php foreach ($users as $user): ?>
+                    <form id="user-form-<?php echo (int)$user['id']; ?>" method="POST">
+                        <input type="hidden" name="action" value="update_user">
+                        <input type="hidden" name="user_id" value="<?php echo (int)$user['id']; ?>">
+                    </form>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+        <div class="dashboard-section">
+            <h3>Responsables de clubs</h3>
+            <p class="admin-section-note">Un club peut avoir plusieurs responsables. Vous pouvez en ajouter ou en retirer. Si vous retirez le dernier, l'admin courant devient responsable par défaut.</p>
+            <div id="clubs-section-feedback" class="admin-feedback"></div>
+
+            <div class="admin-toolbar" style="grid-template-columns: 1fr 1fr;">
+                <div class="form-group">
+                    <label for="club-row-filter">Club</label>
+                    <select id="club-row-filter">
+                        <option value="none" selected>Aucun</option>
+                        <?php foreach ($clubs as $club): ?>
+                            <option value="<?php echo (int)$club['id']; ?>"><?php echo htmlspecialchars($club['nom']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="club-responsable-filter">Responsable</label>
+                    <select id="club-responsable-filter">
+                        <option value="none" selected>Aucun</option>
+                        <?php foreach ($responsableUsers as $respUser): ?>
+                            <option value="<?php echo (int)$respUser['id']; ?>"><?php echo htmlspecialchars(trim((string)$respUser['prenom'] . ' ' . (string)$respUser['nom'])); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+
+            <p id="clubs-admin-empty-state" class="admin-section-note">Aucun filtre applique. Selectionnez un club et/ou un responsable pour afficher la table.</p>
+
+            <div class="admin-table-wrap" id="clubs-admin-table-wrap" style="display: none;">
+                <table class="admin-table" id="clubs-admin-table">
+                    <thead>
+                        <tr>
+                            <th>Club</th>
+                            <th>Responsables actuels</th>
+                            <th>Responsables valables</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($clubs as $club): ?>
+                            <?php $clubResponsables = $clubResponsablesMap[(int)$club['id']] ?? []; ?>
+                            <?php $clubResponsableIds = array_map(function ($resp) { return (int)($resp['id'] ?? 0); }, $clubResponsables); ?>
+                            <tr data-club-id="<?php echo (int)$club['id']; ?>" data-responsable-ids=",<?php echo htmlspecialchars(implode(',', array_filter($clubResponsableIds))); ?>,">
+                                <td><?php echo htmlspecialchars($club['nom']); ?></td>
+                                <td>
+                                    <div data-club-responsables-list>
+                                    <?php if (empty($clubResponsables)): ?>
+                                        <span class="admin-badge">Aucun</span>
+                                    <?php else: ?>
+                                        <?php foreach ($clubResponsables as $resp): ?>
+                                            <div class="admin-actions" style="justify-content: space-between; margin-bottom: 6px;">
+                                                <span><?php echo htmlspecialchars(trim((string)$resp['prenom'] . ' ' . (string)$resp['nom']) . ' (' . ($resp['role'] ?? 'etudiant') . ')'); ?></span>
+                                                <button type="button" class="btn btn-danger btn-sm js-make-valable" data-club-id="<?php echo (int)$club['id']; ?>" data-user-id="<?php echo (int)$resp['id']; ?>">→</button>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div data-club-valables-list>
+                                    <?php
+                                        $clubResponsableIdMap = array_flip(array_filter($clubResponsableIds));
+                                        $valables = array_values(array_filter($responsableUsers, function ($user) use ($clubResponsableIdMap) {
+                                            return !isset($clubResponsableIdMap[(int)($user['id'] ?? 0)]);
+                                        }));
+                                    ?>
+                                    <?php if (empty($valables)): ?>
+                                        <span class="admin-badge">Aucun</span>
+                                    <?php else: ?>
+                                        <?php foreach ($valables as $user): ?>
+                                            <div class="admin-actions" style="justify-content: flex-start; gap: 10px; margin-bottom: 6px;">
+                                                <button type="button" class="btn btn-primary btn-sm js-make-current" data-club-id="<?php echo (int)$club['id']; ?>" data-user-id="<?php echo (int)$user['id']; ?>">←</button>
+                                                <span><?php echo htmlspecialchars(trim((string)$user['prenom'] . ' ' . (string)$user['nom']) . ' (' . $user['role'] . ')'); ?></span>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="dashboard-section">
+            <h3>Ajout direct à un club</h3>
+            <p class="admin-section-note">Choisissez un utilisateur (etudiant ou responsable), filtrez selon son statut d'adhesion actuel, puis selectionnez le club de destination.</p>
+            <div id="direct-section-feedback" class="admin-feedback"></div>
+
+            <div class="admin-toolbar" style="grid-template-columns: 1.5fr 1fr 1fr;">
+                <div class="form-group">
+                    <label for="direct-membership-filter">Deja dans un club</label>
+                    <select id="direct-membership-filter">
+                        <option value="all" selected>Tous</option>
+                        <option value="no">Non</option>
+                        <option value="yes">Oui</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="direct-user-search">Utilisateur</label>
+                    <div id="direct-user-picker" class="direct-user-picker">
+                        <input type="text" id="direct-user-search" placeholder="Tapez nom, prenom ou email..." autocomplete="off" role="combobox" aria-expanded="false" aria-controls="direct-user-options" aria-autocomplete="list">
+                        <input type="hidden" form="direct-membership-form" name="user_id" id="direct-user-id" value="">
+                        <div id="direct-user-options" class="direct-user-options" role="listbox" hidden></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="direct-target-club">Club a ajouter</label>
+                    <select id="direct-target-club" form="direct-membership-form" name="club_id" required>
+                        <?php foreach ($clubs as $club): ?>
+                            <option value="<?php echo (int)$club['id']; ?>"><?php echo htmlspecialchars($club['nom']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+
+            <p id="direct-user-clubs-info" class="admin-section-note">Selectionnez un etudiant pour voir ses clubs actuels.</p>
+
+            <div class="admin-actions" style="justify-content: flex-start;">
+                <button type="submit" form="direct-membership-form" id="direct-add-submit" class="btn btn-success" <?php echo empty($directStudents) ? 'disabled' : ''; ?>>Ajouter au club</button>
+            </div>
+
+            <div class="admin-hidden-forms">
+                <form id="direct-membership-form" method="POST">
+                    <input type="hidden" name="action" value="add_member_direct">
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Plateforme de Gestion des Clubs Universitaires. Tous droits réservés.</p>
+    </footer>
+    <script id="direct-students-json" type="application/json"><?php echo $directStudentsJson ?? '[]'; ?></script>
+    <script id="all-responsables-json" type="application/json"><?php echo $responsableUsersJson ?? '[]'; ?></script>
+    <script src="<?php echo htmlspecialchars(phpRoute('../scripts/navbar.js')); ?>"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchInput = document.getElementById('user-search');
+            const roleFilter = document.getElementById('role-filter');
+            const statusFilter = document.getElementById('status-filter');
+            const tableWrap = document.getElementById('users-admin-table-wrap');
+            const emptyState = document.getElementById('users-table-empty-state');
+            const rows = document.querySelectorAll('#users-admin-table tbody tr');
+            const clubRowFilter = document.getElementById('club-row-filter');
+            const clubResponsableFilter = document.getElementById('club-responsable-filter');
+            const clubsTableWrap = document.getElementById('clubs-admin-table-wrap');
+            const clubsEmptyState = document.getElementById('clubs-admin-empty-state');
+            const clubsRows = document.querySelectorAll('#clubs-admin-table tbody tr');
+            const allResponsablesNode = document.getElementById('all-responsables-json');
+            let allResponsablesData = [];
+            try {
+                allResponsablesData = JSON.parse(allResponsablesNode ? allResponsablesNode.textContent : '[]');
+            } catch (error) {
+                allResponsablesData = [];
+            }
+            const directUserSearch = document.getElementById('direct-user-search');
+            const directUserPicker = document.getElementById('direct-user-picker');
+            const directUserOptions = document.getElementById('direct-user-options');
+            const directUserIdInput = document.getElementById('direct-user-id');
+            const directMembershipFilter = document.getElementById('direct-membership-filter');
+            const directTargetClub = document.getElementById('direct-target-club');
+            const directUserClubsInfo = document.getElementById('direct-user-clubs-info');
+            const directForm = document.getElementById('direct-membership-form');
+            const directAddSubmit = document.getElementById('direct-add-submit');
+            const usersSectionFeedback = document.getElementById('users-section-feedback');
+            const clubsSectionFeedback = document.getElementById('clubs-section-feedback');
+            const directSectionFeedback = document.getElementById('direct-section-feedback');
+            const directStudentsNode = document.getElementById('direct-students-json');
+            const userSaveButtons = document.querySelectorAll('.user-save-btn');
+            let directStudentsData = [];
+            try {
+                directStudentsData = JSON.parse(directStudentsNode ? directStudentsNode.textContent : '[]');
+            } catch (error) {
+                directStudentsData = [];
+            }
+            let directDropdownIndex = -1;
+
+            function setSectionFeedback(container, message, isSuccess) {
+                if (!container) {
+                    return;
+                }
+
+                const text = (message || '').trim();
+                if (text === '') {
+                    container.textContent = '';
+                    container.classList.remove('is-success', 'is-error');
+                    container.style.display = 'none';
+                    return;
+                }
+
+                container.textContent = text;
+                container.classList.remove('is-success', 'is-error');
+                container.classList.add(isSuccess ? 'is-success' : 'is-error');
+                container.style.display = 'block';
+            }
+
+            function clearAllSectionFeedback() {
+                setSectionFeedback(usersSectionFeedback, '', true);
+                setSectionFeedback(clubsSectionFeedback, '', true);
+                setSectionFeedback(directSectionFeedback, '', true);
+            }
+
+            function hideAllUserSaveButtons() {
+                userSaveButtons.forEach(function (button) {
+                    button.classList.remove('is-visible');
+                });
+            }
+
+            function showUserSaveButtonForForm(formId) {
+                hideAllUserSaveButtons();
+                const button = document.querySelector('.user-save-btn[form="' + formId + '"]');
+                if (button) {
+                    button.classList.add('is-visible');
+                }
+            }
+
+            function postAdminFormAjax(formElement, feedbackTarget, onSuccess) {
+                const formData = new FormData(formElement);
+
+                return fetch('admin.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                }).then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                    const ok = !!(data && data.success);
+                    setSectionFeedback(feedbackTarget, (data && data.message) ? data.message : 'Operation terminee.', ok);
+                    if (ok && typeof onSuccess === 'function') {
+                        onSuccess(data);
+                    }
+                }).catch(function () {
+                    setSectionFeedback(feedbackTarget, 'Erreur reseau. Reessayez.', false);
+                });
+            }
+
+            function applyFilters() {
+                const searchValue = (searchInput.value || '').trim().toLowerCase();
+                const roleValue = roleFilter.value;
+                const statusValue = statusFilter.value;
+                const hasAnyCriteria = searchValue !== '' || roleValue !== 'none' || statusValue !== 'none';
+                let visibleCount = 0;
+
+                function updateEmptyStateMessage() {
+                    if (!emptyState) {
+                        return;
+                    }
+
+                    if (!hasAnyCriteria) {
+                        emptyState.textContent = 'Select a role, status, or search to display users.';
+                        return;
+                    }
+
+                    const selectedParts = [];
+                    if (roleValue !== 'none') {
+                        selectedParts.push('role');
+                    }
+                    if (statusValue !== 'none') {
+                        selectedParts.push('status');
+                    }
+
+                    if (searchValue !== '') {
+                        if (selectedParts.length > 0) {
+                            emptyState.textContent = 'No users match the current search and filter combination.';
+                        } else {
+                            emptyState.textContent = 'No users match your search.';
+                        }
+                        return;
+                    }
+
+                    if (selectedParts.length === 2) {
+                        emptyState.textContent = 'No users match the selected role and status.';
+                    } else if (selectedParts[0] === 'role') {
+                        emptyState.textContent = 'No users match the selected role.';
+                    } else if (selectedParts[0] === 'status') {
+                        emptyState.textContent = 'No users match the selected status.';
+                    } else {
+                        emptyState.textContent = 'No users match the selected filters.';
+                    }
+                }
+
+                if (!hasAnyCriteria) {
+                    tableWrap.style.display = 'none';
+                    emptyState.style.display = '';
+                    updateEmptyStateMessage();
+                    return;
+                }
+
+                tableWrap.style.display = '';
+                emptyState.style.display = 'none';
+
+                rows.forEach(function (row) {
+                    const rowRole = row.getAttribute('data-role') || '';
+                    const rowStatus = row.getAttribute('data-status') || '';
+                    const rowSearch = row.getAttribute('data-search') || '';
+                    const matchesRole = roleValue === 'none' || rowRole === roleValue;
+                    const matchesStatus = statusValue === 'none' || rowStatus === statusValue;
+                    const matchesSearch = searchValue === '' || rowSearch.indexOf(searchValue) !== -1;
+                    const isVisible = matchesRole && matchesStatus && matchesSearch;
+                    row.style.display = isVisible ? '' : 'none';
+                    if (isVisible) {
+                        visibleCount++;
+                    }
+                });
+
+                if (visibleCount === 0) {
+                    tableWrap.style.display = 'none';
+                    emptyState.style.display = '';
+                    updateEmptyStateMessage();
+                } else {
+                    tableWrap.style.display = '';
+                }
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener('input', applyFilters);
+            }
+
+            document.querySelectorAll('#users-admin-table [form^="user-form-"]').forEach(function (field) {
+                const formId = field.getAttribute('form');
+                if (!formId) {
+                    return;
+                }
+
+                const eventName = field.tagName === 'SELECT' ? 'change' : 'input';
+                field.addEventListener(eventName, function () {
+                    showUserSaveButtonForForm(formId);
+                });
+            });
+
+            // Submit user updates without page refresh.
+            document.querySelectorAll('form[id^="user-form-"]').forEach(function (formElement) {
+                formElement.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    setSectionFeedback(usersSectionFeedback, '', true);
+                    postAdminFormAjax(formElement, usersSectionFeedback, function (data) {
+                        applyUpdatedUserRow(data && data.updated_user ? data.updated_user : null);
+                        applyAdminSyncPayload(data && data.sync ? data.sync : null);
+                        hideAllUserSaveButtons();
+                        applyFilters();
+                    });
+                });
+            });
+
+            if (roleFilter) {
+                roleFilter.addEventListener('change', applyFilters);
+            }
+
+            if (statusFilter) {
+                statusFilter.addEventListener('change', applyFilters);
+            }
+
+            function applyClubsTableFilters() {
+                const clubValue = (clubRowFilter && clubRowFilter.value) ? clubRowFilter.value : 'none';
+                const responsableValue = (clubResponsableFilter && clubResponsableFilter.value) ? clubResponsableFilter.value : 'none';
+                const hasCriteria = clubValue !== 'none' || responsableValue !== 'none';
+
+                if (!hasCriteria) {
+                    if (clubsTableWrap) clubsTableWrap.style.display = 'none';
+                    if (clubsEmptyState) clubsEmptyState.style.display = '';
+                    return;
+                }
+
+                if (clubsTableWrap) clubsTableWrap.style.display = '';
+                if (clubsEmptyState) clubsEmptyState.style.display = 'none';
+
+                clubsRows.forEach(function (row) {
+                    const rowClubId = row.getAttribute('data-club-id') || '';
+                    const rowResponsableIds = row.getAttribute('data-responsable-ids') || ',,';
+                    const matchesClub = clubValue === 'none' || rowClubId === clubValue;
+                    const matchesResponsable = responsableValue === 'none' || rowResponsableIds.indexOf(',' + responsableValue + ',') !== -1;
+                    row.style.display = matchesClub && matchesResponsable ? '' : 'none';
+                });
+            }
+
+            function refreshClubResponsableFilterOptions() {
+                if (!clubResponsableFilter) {
+                    return;
+                }
+
+                const currentValue = clubResponsableFilter.value || 'none';
+                clubResponsableFilter.innerHTML = '<option value="none">Aucun</option>';
+
+                allResponsablesData.forEach(function (responsable) {
+                    const id = Number(responsable && responsable.id ? responsable.id : 0);
+                    if (id <= 0) {
+                        return;
+                    }
+
+                    const option = document.createElement('option');
+                    option.value = String(id);
+                    option.textContent = ((responsable.prenom || '') + ' ' + (responsable.nom || '')).trim();
+                    clubResponsableFilter.appendChild(option);
+                });
+
+                const valueExists = Array.from(clubResponsableFilter.options).some(function (option) {
+                    return option.value === currentValue;
+                });
+                clubResponsableFilter.value = valueExists ? currentValue : 'none';
+            }
+
+            function getFilteredDirectStudents(searchTerm) {
+                const membershipValue = (directMembershipFilter && directMembershipFilter.value) ? directMembershipFilter.value : 'all';
+                const normalizedSearch = String(searchTerm || '').trim().toLowerCase();
+                let filtered = directStudentsData;
+
+                if (membershipValue === 'yes') {
+                    filtered = directStudentsData.filter(function (student) { return student.inClub; });
+                }
+                if (membershipValue === 'no') {
+                    filtered = directStudentsData.filter(function (student) { return !student.inClub; });
+                }
+
+                if (normalizedSearch === '') {
+                    return filtered;
+                }
+
+                return filtered.filter(function (student) {
+                    return String(student.label || '').toLowerCase().indexOf(normalizedSearch) !== -1;
+                });
+            }
+
+            function refreshDirectUserList() {
+                if (!directUserOptions) {
+                    return;
+                }
+
+                const currentText = (directUserSearch && directUserSearch.value ? directUserSearch.value : '').trim();
+                const filteredStudents = getFilteredDirectStudents(currentText);
+
+                directUserOptions.innerHTML = '';
+                if (filteredStudents.length === 0) {
+                    const emptyNode = document.createElement('div');
+                    emptyNode.className = 'direct-user-empty';
+                    emptyNode.textContent = 'No matching student';
+                    directUserOptions.appendChild(emptyNode);
+                    directDropdownIndex = -1;
+                } else {
+                    filteredStudents.forEach(function (student, index) {
+                        const option = document.createElement('button');
+                        option.type = 'button';
+                        option.className = 'direct-user-option';
+                        option.setAttribute('data-index', String(index));
+                        option.textContent = student.label;
+                        option.addEventListener('click', function () {
+                            if (directUserIdInput) {
+                                directUserIdInput.value = String(student.id);
+                            }
+                            if (directUserSearch) {
+                                directUserSearch.value = student.label;
+                                directUserSearch.setAttribute('aria-expanded', 'false');
+                            }
+                            if (directUserOptions) {
+                                directUserOptions.hidden = true;
+                            }
+                            updateDirectStudentInfo();
+                        });
+                        directUserOptions.appendChild(option);
+                    });
+
+                    if (directDropdownIndex >= filteredStudents.length) {
+                        directDropdownIndex = filteredStudents.length - 1;
+                    }
+                }
+
+                const optionNodes = directUserOptions.querySelectorAll('.direct-user-option');
+                optionNodes.forEach(function (node, index) {
+                    node.classList.toggle('is-active', index === directDropdownIndex);
+                });
+
+                const matched = filteredStudents.find(function (student) { return student.label === currentText; });
+                if (!matched && directUserIdInput) {
+                    directUserIdInput.value = '';
+                }
+                updateDirectStudentInfo();
+            }
+
+            function updateDirectStudentInfo() {
+                if (!directUserClubsInfo) {
+                    return;
+                }
+
+                const selectedId = parseInt((directUserIdInput && directUserIdInput.value) ? directUserIdInput.value : '0', 10);
+                const selected = directStudentsData.find(function (student) { return student.id === selectedId; });
+                if (!selected) {
+                    directUserClubsInfo.textContent = 'Selectionnez un etudiant pour voir ses clubs actuels.';
+                    updateDirectTargetClubOptions(null);
+                    return;
+                }
+
+                if (!selected.inClub || !selected.clubs || selected.clubs.length === 0) {
+                    directUserClubsInfo.textContent = 'Cet etudiant n\'est actuellement membre d\'aucun club.';
+                    updateDirectTargetClubOptions(selected);
+                    return;
+                }
+
+                directUserClubsInfo.textContent = 'Clubs actuels: ' + selected.clubs.join(', ');
+                updateDirectTargetClubOptions(selected);
+            }
+
+            function updateDirectTargetClubOptions(selectedStudent) {
+                if (!directTargetClub) {
+                    return;
+                }
+
+                const joinedClubIds = selectedStudent && Array.isArray(selectedStudent.clubIds)
+                    ? selectedStudent.clubIds.map(function (id) { return String(id); })
+                    : [];
+
+                let visibleCount = 0;
+                Array.from(directTargetClub.options).forEach(function (option) {
+                    const shouldHide = joinedClubIds.indexOf(option.value) !== -1;
+                    option.hidden = shouldHide;
+                    if (!shouldHide) {
+                        visibleCount++;
+                    }
+                });
+
+                const firstVisible = Array.from(directTargetClub.options).find(function (option) { return !option.hidden; });
+                if (firstVisible) {
+                    directTargetClub.value = firstVisible.value;
+                }
+
+                const hasSelectedStudent = !!(selectedStudent && selectedStudent.id);
+                const canSubmit = hasSelectedStudent && visibleCount > 0;
+                if (directAddSubmit) {
+                    directAddSubmit.disabled = !canSubmit;
+                }
+
+                if (hasSelectedStudent && visibleCount === 0 && directUserClubsInfo) {
+                    directUserClubsInfo.textContent = 'Cet etudiant est deja membre de tous les clubs disponibles.';
+                }
+            }
+
+            if (clubRowFilter) {
+                clubRowFilter.addEventListener('change', function () {
+                    if ((clubRowFilter.value || 'none') !== 'none' && clubResponsableFilter) {
+                        clubResponsableFilter.value = 'none';
+                    }
+                    applyClubsTableFilters();
+                });
+            }
+
+            if (clubResponsableFilter) {
+                clubResponsableFilter.addEventListener('change', function () {
+                    if ((clubResponsableFilter.value || 'none') !== 'none' && clubRowFilter) {
+                        clubRowFilter.value = 'none';
+                    }
+                    applyClubsTableFilters();
+                });
+            }
+
+            function escapeHtml(value) {
+                return String(value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function refreshClubResponsablesRow(payload) {
+                const clubId = parseInt((payload && payload.club_id) ? payload.club_id : 0, 10);
+                if (!clubId) {
+                    return;
+                }
+
+                const row = document.querySelector('#clubs-admin-table tbody tr[data-club-id="' + clubId + '"]');
+                if (!row) {
+                    return;
+                }
+
+                const responsables = Array.isArray(payload.club_responsables) ? payload.club_responsables : [];
+                const responsableIdSet = {};
+                responsables.forEach(function (resp) {
+                    const id = parseInt(resp && resp.id ? resp.id : 0, 10);
+                    if (id > 0) {
+                        responsableIdSet[id] = true;
+                    }
+                });
+
+                const valables = allResponsablesData.filter(function (user) {
+                    const id = parseInt(user && user.id ? user.id : 0, 10);
+                    return id > 0 && !responsableIdSet[id];
+                });
+
+                const idList = Object.keys(responsableIdSet).map(function (id) { return String(id); }).join(',');
+                row.setAttribute('data-responsable-ids', ',' + idList + ',');
+
+                const listContainer = row.querySelector('[data-club-responsables-list]');
+                if (listContainer) {
+                    if (responsables.length === 0) {
+                        listContainer.innerHTML = '<span class="admin-badge">Aucun</span>';
+                    } else {
+                        listContainer.innerHTML = responsables.map(function (resp) {
+                            const fullName = ((resp.prenom || '') + ' ' + (resp.nom || '')).trim();
+                            return '<div class="admin-actions" style="justify-content: space-between; margin-bottom: 6px;">'
+                                + '<span>' + escapeHtml(fullName + ' (' + (resp.role || 'etudiant') + ')') + '</span>'
+                                + '<button type="button" class="btn btn-danger btn-sm js-make-valable" data-club-id="' + String(clubId) + '" data-user-id="' + String(resp.id || '') + '">→</button>'
+                                + '</div>';
+                        }).join('');
+                    }
+                }
+
+                const valablesContainer = row.querySelector('[data-club-valables-list]');
+                if (valablesContainer) {
+                    if (valables.length === 0) {
+                        valablesContainer.innerHTML = '<span class="admin-badge">Aucun</span>';
+                    } else {
+                        valablesContainer.innerHTML = valables.map(function (user) {
+                            const fullName = ((user.prenom || '') + ' ' + (user.nom || '')).trim();
+                            return '<div class="admin-actions" style="justify-content: flex-start; gap: 10px; margin-bottom: 6px;">'
+                                + '<button type="button" class="btn btn-primary btn-sm js-make-current" data-club-id="' + String(clubId) + '" data-user-id="' + String(user.id || '') + '">←</button>'
+                                + '<span>' + escapeHtml(fullName + ' (' + (user.role || 'responsable') + ')') + '</span>'
+                                + '</div>';
+                        }).join('');
+                    }
+                }
+            }
+
+            function applyUpdatedUserRow(updatedUser) {
+                if (!updatedUser || !updatedUser.id) {
+                    return;
+                }
+
+                const formId = 'user-form-' + String(updatedUser.id);
+                const anyInput = document.querySelector('#users-admin-table tbody input[form="' + formId + '"]');
+                const row = anyInput ? anyInput.closest('tr') : null;
+                if (!row) {
+                    return;
+                }
+
+                const nom = String(updatedUser.nom || '').trim();
+                const prenom = String(updatedUser.prenom || '').trim();
+                const email = String(updatedUser.email || '').trim();
+                const role = String(updatedUser.role || '').trim();
+                const status = String(updatedUser.account_status || 'active').trim();
+
+                row.setAttribute('data-role', role);
+                row.setAttribute('data-status', status);
+                row.setAttribute('data-search', (prenom + ' ' + nom + ' ' + email + ' ' + role + ' ' + status).trim().toLowerCase());
+
+                const passwordFormId = 'user-form-' + String(updatedUser.id);
+                const passwordInput = document.querySelector('input[type="password"][form="' + passwordFormId + '"]');
+                if (passwordInput) {
+                    passwordInput.value = '';
+                }
+            }
+
+            function applyAdminSyncPayload(sync) {
+                if (!sync || typeof sync !== 'object') {
+                    return;
+                }
+
+                if (Array.isArray(sync.responsableUsers)) {
+                    allResponsablesData = sync.responsableUsers
+                        .filter(function (item) { return item && Number(item.id) > 0; })
+                        .map(function (item) {
+                            return {
+                                id: Number(item.id),
+                                prenom: String(item.prenom || ''),
+                                nom: String(item.nom || ''),
+                                role: String(item.role || 'responsable')
+                            };
+                        });
+                    refreshClubResponsableFilterOptions();
+                }
+
+                if (Array.isArray(sync.directStudents)) {
+                    directStudentsData = sync.directStudents
+                        .filter(function (item) { return item && Number(item.id) > 0; })
+                        .map(function (item) {
+                            return {
+                                id: Number(item.id),
+                                label: String(item.label || ''),
+                                inClub: !!item.inClub,
+                                clubIds: Array.isArray(item.clubIds) ? item.clubIds.map(function (value) { return Number(value); }).filter(function (value) { return value > 0; }) : [],
+                                clubs: Array.isArray(item.clubs) ? item.clubs.map(function (value) { return String(value); }) : []
+                            };
+                        });
+
+                    refreshDirectUserList();
+                    updateDirectStudentInfo();
+                }
+
+                if (sync.clubResponsablesMap && typeof sync.clubResponsablesMap === 'object') {
+                    Object.keys(sync.clubResponsablesMap).forEach(function (clubId) {
+                        refreshClubResponsablesRow({
+                            club_id: Number(clubId),
+                            club_responsables: Array.isArray(sync.clubResponsablesMap[clubId]) ? sync.clubResponsablesMap[clubId] : []
+                        });
+                    });
+                    applyClubsTableFilters();
+                }
+            }
+
+            // Toggle responsables between valables/actuels without page refresh.
+            document.addEventListener('click', function (event) {
+                const makeCurrentBtn = event.target.closest('.js-make-current');
+                const makeValableBtn = event.target.closest('.js-make-valable');
+
+                if (!makeCurrentBtn && !makeValableBtn) {
+                    return;
+                }
+
+                const sourceBtn = makeCurrentBtn || makeValableBtn;
+                const clubId = sourceBtn.getAttribute('data-club-id') || '';
+                const userId = sourceBtn.getAttribute('data-user-id') || '';
+                const actionName = makeCurrentBtn ? 'assign_responsible' : 'remove_responsible';
+
+                if (clubId === '' || userId === '') {
+                    return;
+                }
+
+                const tempForm = document.createElement('form');
+                const actionInput = document.createElement('input');
+                const clubInput = document.createElement('input');
+                const userInput = document.createElement('input');
+
+                actionInput.name = 'action';
+                actionInput.value = actionName;
+                clubInput.name = 'club_id';
+                clubInput.value = clubId;
+                userInput.name = 'responsable_id';
+                userInput.value = userId;
+
+                tempForm.appendChild(actionInput);
+                tempForm.appendChild(clubInput);
+                tempForm.appendChild(userInput);
+
+                setSectionFeedback(clubsSectionFeedback, '', true);
+                postAdminFormAjax(tempForm, clubsSectionFeedback, function (data) {
+                    refreshClubResponsablesRow(data);
+                });
+            });
+
+            if (directMembershipFilter) {
+                directMembershipFilter.addEventListener('change', function () {
+                    if (directUserSearch) {
+                        directUserSearch.value = '';
+                        directUserSearch.setAttribute('aria-expanded', 'false');
+                    }
+                    if (directUserIdInput) {
+                        directUserIdInput.value = '';
+                    }
+                    if (directUserOptions) {
+                        directUserOptions.hidden = true;
+                    }
+                    directDropdownIndex = -1;
+                    refreshDirectUserList();
+                });
+            }
+
+            if (directUserSearch) {
+                directUserSearch.addEventListener('focus', function () {
+                    refreshDirectUserList();
+                    if (directUserOptions) {
+                        directUserOptions.hidden = false;
+                    }
+                    directUserSearch.setAttribute('aria-expanded', 'true');
+                });
+
+                directUserSearch.addEventListener('input', function () {
+                    const typed = directUserSearch.value.trim();
+                    const filteredStudents = getFilteredDirectStudents(typed);
+                    directDropdownIndex = filteredStudents.length > 0 ? 0 : -1;
+                    refreshDirectUserList();
+                    if (directUserOptions) {
+                        directUserOptions.hidden = false;
+                    }
+                    directUserSearch.setAttribute('aria-expanded', 'true');
+                    const matched = filteredStudents.find(function (student) { return student.label === typed; });
+                    if (directUserIdInput) {
+                        directUserIdInput.value = matched ? String(matched.id) : '';
+                    }
+                    updateDirectStudentInfo();
+                });
+
+                directUserSearch.addEventListener('keydown', function (event) {
+                    const filteredStudents = getFilteredDirectStudents(directUserSearch.value || '');
+                    if (event.key === 'ArrowDown') {
+                        event.preventDefault();
+                        if (filteredStudents.length > 0) {
+                            directDropdownIndex = Math.min(directDropdownIndex + 1, filteredStudents.length - 1);
+                            refreshDirectUserList();
+                            if (directUserOptions) {
+                                directUserOptions.hidden = false;
+                            }
+                            directUserSearch.setAttribute('aria-expanded', 'true');
+                        }
+                        return;
+                    }
+
+                    if (event.key === 'ArrowUp') {
+                        event.preventDefault();
+                        if (filteredStudents.length > 0) {
+                            directDropdownIndex = Math.max(directDropdownIndex - 1, 0);
+                            refreshDirectUserList();
+                            if (directUserOptions) {
+                                directUserOptions.hidden = false;
+                            }
+                            directUserSearch.setAttribute('aria-expanded', 'true');
+                        }
+                        return;
+                    }
+
+                    if (event.key === 'Enter') {
+                        if (filteredStudents.length > 0 && directDropdownIndex >= 0) {
+                            event.preventDefault();
+                            const selected = filteredStudents[directDropdownIndex];
+                            if (directUserIdInput) {
+                                directUserIdInput.value = String(selected.id);
+                            }
+                            directUserSearch.value = selected.label;
+                            if (directUserOptions) {
+                                directUserOptions.hidden = true;
+                            }
+                            directUserSearch.setAttribute('aria-expanded', 'false');
+                            updateDirectStudentInfo();
+                        }
+                        return;
+                    }
+
+                    if (event.key === 'Escape') {
+                        if (directUserOptions) {
+                            directUserOptions.hidden = true;
+                        }
+                        directUserSearch.setAttribute('aria-expanded', 'false');
+                    }
+                });
+            }
+
+            document.addEventListener('click', function (event) {
+                if (!directUserPicker || !directUserPicker.contains(event.target)) {
+                    if (directUserOptions) {
+                        directUserOptions.hidden = true;
+                    }
+                    if (directUserSearch) {
+                        directUserSearch.setAttribute('aria-expanded', 'false');
+                    }
+                }
+            });
+
+            if (directForm) {
+                directForm.addEventListener('submit', function (event) {
+                    if (!directUserIdInput || !directUserIdInput.value) {
+                        event.preventDefault();
+                        alert('Veuillez selectionner un etudiant valide dans la liste.');
+                        return;
+                    }
+
+                    event.preventDefault();
+                    setSectionFeedback(directSectionFeedback, '', true);
+                    postAdminFormAjax(directForm, directSectionFeedback, function () {
+                        const selectedId = parseInt(directUserIdInput.value || '0', 10);
+                        const selectedClubName = directTargetClub && directTargetClub.selectedOptions.length > 0
+                            ? (directTargetClub.selectedOptions[0].textContent || '').trim()
+                            : '';
+                        const selectedClubId = directTargetClub && directTargetClub.value ? parseInt(directTargetClub.value, 10) : 0;
+                        const student = directStudentsData.find(function (item) { return item.id === selectedId; });
+                        if (student) {
+                            student.inClub = true;
+                            student.clubs = Array.isArray(student.clubs) ? student.clubs : [];
+                            student.clubIds = Array.isArray(student.clubIds) ? student.clubIds : [];
+                            if (selectedClubName !== '' && student.clubs.indexOf(selectedClubName) === -1) {
+                                student.clubs.push(selectedClubName);
+                            }
+                            if (selectedClubId > 0 && student.clubIds.indexOf(selectedClubId) === -1) {
+                                student.clubIds.push(selectedClubId);
+                            }
+                        }
+
+                        refreshDirectUserList();
+                        updateDirectStudentInfo();
+                    });
+                });
+            }
+
+            const statusSelects = document.querySelectorAll('.js-status-select');
+            statusSelects.forEach(function (select) {
+                function syncReasonRequirement() {
+                    const userId = select.getAttribute('data-user-id');
+                    const reasonInput = document.querySelector('.js-inactive-reason[data-user-id="' + userId + '"]');
+                    if (!reasonInput) {
+                        return;
+                    }
+                    if ((select.value || '').toLowerCase() === 'inactive') {
+                        reasonInput.required = true;
+                        reasonInput.classList.remove('is-hidden');
+                    } else {
+                        reasonInput.required = false;
+                        reasonInput.value = '';
+                        reasonInput.classList.add('is-hidden');
+                    }
+                }
+
+                select.addEventListener('change', syncReasonRequirement);
+                syncReasonRequirement();
+            });
+
+            applyFilters();
+            applyClubsTableFilters();
+            refreshDirectUserList();
+            updateDirectStudentInfo();
+            hideAllUserSaveButtons();
+            if (directAddSubmit && directStudentsData.length === 0) {
+                directAddSubmit.disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>

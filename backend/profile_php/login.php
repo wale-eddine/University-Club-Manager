@@ -147,6 +147,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pendingVerificationEmail = $email;
             $showResendVerification = true;
             $error = 'Veuillez vérifier votre email avant de vous connecter. Consultez votre boîte de réception et votre dossier spam.';
+        } elseif (($authResult['status'] ?? 'invalid') === 'inactive') {
+            $inactiveReason = trim((string)($result['inactive_reason'] ?? ''));
+            $error = 'Votre compte a ete desactive par un administrateur.' . ($inactiveReason !== '' ? (' Raison: ' . $inactiveReason) : '');
         } else {
             $error = 'Email ou mot de passe incorrect.';
         }

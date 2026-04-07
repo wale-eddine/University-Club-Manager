@@ -206,9 +206,14 @@
                 bellItem.className = 'decision-bell-item';
                 bellItem.appendChild(createBellLink(false, notifCount));
 
-                const dashboardLi = dashboardNavLink.closest('li');
-                if (dashboardLi && dashboardLi.parentNode) {
-                    dashboardLi.parentNode.insertBefore(bellItem, dashboardLi.nextSibling);
+                const profileOrAccountLi = navLinks.querySelector('.profile-menu, .account-menu');
+                if (profileOrAccountLi && profileOrAccountLi.parentNode) {
+                    profileOrAccountLi.parentNode.insertBefore(bellItem, profileOrAccountLi);
+                } else {
+                    const dashboardLi = dashboardNavLink.closest('li');
+                    if (dashboardLi && dashboardLi.parentNode) {
+                        dashboardLi.parentNode.insertBefore(bellItem, dashboardLi.nextSibling);
+                    }
                 }
             }
 
