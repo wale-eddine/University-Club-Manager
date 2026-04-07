@@ -26,12 +26,22 @@ Le projet couvre le cycle principal d'un club universitaire:
 - Inscription / desinscription a un evenement.
 - Consultation des notifications.
 
-### Admin de club (`role = admin`)
-- Creation, modification et suppression de clubs.
-- Validation des demandes d'adhesion (`pending`, `accepted`, `rejected`).
-- Consultation des membres d'un club.
-- Creation, modification et suppression d'evenements.
-- Consultation des participants.
+### Roles et permissions
+
+`admin`
+- Acces global a tous les clubs, evenements, demandes et utilisateurs.
+- Acces au panneau d'administration (`backend/admin.php`).
+- Gestion des responsables (attribution/retrait) sur tous les clubs.
+
+`responsable`
+- Gestion des clubs dont il est responsable (multi-clubs supportes).
+- Validation/rejet des demandes d'adhesion sur ses clubs.
+- Gestion des participants et des evenements de ses clubs.
+
+`etudiant`
+- Consultation des clubs/evenements.
+- Demande d'adhesion a un club.
+- Participation/desinscription aux evenements selon les regles d'acces.
 
 ### Interface
 - Design responsive (desktop/tablette/mobile).
@@ -153,21 +163,28 @@ University-Club-Manager/
 Le schema `database/schema.sql` contient notamment:
 - `USERS`
 - `CLUBS`
+- `CLUB_RESPONSABLES`
+- `CLUB_RESPONSABLES_ARCHIVE`
 - `CLUB_MEMBERS`
 - `MEMBERSHIP_REQUESTS`
 - `MEMBERSHIP_REQUEST_COOLDOWNS`
 - `EVENTS`
 - `EVENT_PARTICIPANTS`
+- `EVENT_REJOIN_COOLDOWNS`
 - `USER_NOTIFICATIONS`
 - `PASSWORD_RESET_TOKENS`
 - `EMAIL_VERIFICATION_TOKENS`
 
-### Champs auth ajoutes dans `USERS`
+### Champs de gestion ajoutes dans `USERS`
 
 - `mot_de_passe` (nullable pour comptes OAuth)
 - `google_id`
 - `avatar_url`
 - `email_verified_at`
+- `role` (`admin`, `responsable`, `etudiant`)
+- `account_status` (`active`, `inactive`)
+- `inactive_reason`
+- `special_id`
 
 ## Reset proprietaire (vider la base + creer un admin)
 
@@ -223,10 +240,33 @@ Le projet inclut maintenant une page reservee aux comptes `admin`:
 
 - Vue et modification de tous les utilisateurs.
 - Changement de role entre `etudiant` et `responsable`.
-- Attribution ou retrait d'un responsable sur un club.
-- Ajout direct d'un utilisateur dans un club sans validation du responsable.
+- Activation/desactivation de compte avec raison obligatoire en mode inactif.
+- Attribution ou retrait d'un responsable sur un club (multi-responsables).
+- Ajout direct d'un utilisateur (`etudiant` ou `responsable`) dans un club sans validation du responsable.
+- Actions AJAX sans rechargement complet avec synchronisation des sections.
+- Recherche/filtres dynamiques sur les tableaux utilisateurs et responsables.
 
 Acces depuis le dashboard admin ou directement via `backend/admin.php`.
+
+## Politique des comptes inactifs
+
+Un compte `inactive` est traite comme temporairement masque a l'echelle de l'application:
+
+- Connexion classique et OAuth bloquees.
+- Reset mot de passe bloque.
+- Exclu des listes de membres, responsables et participants.
+- Exclu des options de selection (affectation responsable, ajout direct, demandes).
+
+Effets automatiques lors de la desactivation:
+
+- Suppression des demandes d'adhesion en attente.
+- Suppression des participations aux evenements.
+- Nettoyage des cooldowns associes.
+- Suspension des responsabilites de club (avec archivage pour restauration).
+
+Effet lors de la reactivation d'un compte `responsable`:
+
+- Restauration automatique des responsabilites archivees.
 
 ## Configuration locale des secrets
 
