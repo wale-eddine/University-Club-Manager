@@ -154,7 +154,6 @@ University-Club-Manager/
 ├── docs/
 │   └── diags/
 ├── .gitignore
-├── LICENSE
 └── README.md
 ```
 
