@@ -117,6 +117,20 @@ class User {
         return $stmt->execute([$hashedPassword, (int)$id]);
     }
 
+    // Verify a plaintext password against the stored hash for a user.
+    public function verifyPassword($id, $password) {
+        $stmt = $this->db->prepare("SELECT mot_de_passe FROM USERS WHERE id = ? LIMIT 1");
+        $stmt->execute([(int)$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $hashedPassword = $row['mot_de_passe'] ?? null;
+        if (!is_string($hashedPassword) || trim($hashedPassword) === '') {
+            return false;
+        }
+
+        return password_verify($password, $hashedPassword);
+    }
+
     // Update profile identity fields for a user.
     public function updateProfile($id, $nom, $prenom, $email) {
         $email = $this->normalizeEmail($email);

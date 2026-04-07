@@ -13,6 +13,20 @@ redirectIfLoggedIn();
 // Initialize page feedback messages.
 $error = '';
 $success = '';
+$fieldErrors = [
+    'nom' => '',
+    'prenom' => '',
+    'email' => '',
+    'password' => '',
+    'password_confirm' => '',
+];
+$formValues = [
+    'nom' => '',
+    'prenom' => '',
+    'email' => '',
+    'password' => '',
+    'password_confirm' => '',
+];
 
 // Validate form data and create a new user account.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -22,19 +36,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $password_confirm = $_POST['password_confirm'] ?? '';
 
+    $formValues['nom'] = $nom;
+    $formValues['prenom'] = $prenom;
+    $formValues['email'] = $email;
+    $formValues['password'] = $password;
+    $formValues['password_confirm'] = $password_confirm;
+
     if (empty($nom) || empty($prenom) || empty($email) || empty($password) || empty($password_confirm)) {
-        $error = 'Veuillez remplir tous les champs.';
+        if ($nom === '') {
+            $fieldErrors['nom'] = 'Veuillez saisir votre nom.';
+        }
+        if ($prenom === '') {
+            $fieldErrors['prenom'] = 'Veuillez saisir votre prénom.';
+        }
+        if ($email === '') {
+            $fieldErrors['email'] = 'Veuillez saisir votre email.';
+        }
+        if ($password === '') {
+            $fieldErrors['password'] = 'Veuillez saisir un mot de passe.';
+        }
+        if ($password_confirm === '') {
+            $fieldErrors['password_confirm'] = 'Veuillez confirmer votre mot de passe.';
+        }
     } elseif ($password !== $password_confirm) {
-        $error = 'Les mots de passe ne correspondent pas.';
+        $fieldErrors['password_confirm'] = 'Les mots de passe ne correspondent pas.';
     } elseif (strlen($password) < 6) {
-        $error = 'Le mot de passe doit contenir au moins 6 caractères.';
+        $fieldErrors['password'] = 'Le mot de passe doit contenir au moins 6 caractères.';
     } else {
         $db = new Database();
         $connection = $db->getConnection();
         $user = new User($connection);
 
         if ($user->emailExists($email)) {
-            $error = 'Cet email est déjà utilisé.';
+            $fieldErrors['email'] = 'Cet email est déjà utilisé.';
         } else {
             if ($user->register($nom, $prenom, $email, $password)) {
                 $createdUser = $user->getUserByEmail($email);

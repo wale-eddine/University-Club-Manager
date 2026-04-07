@@ -93,5 +93,10 @@
         <p>&copy; 2026 Plateforme de Gestion des Clubs Universitaires. Tous droits réservés.</p>
     </footer>
     <script src="<?php echo htmlspecialchars(phpRoute('../scripts/navbar.js')); ?>"></script>
+    <script>
+        if (document.querySelector('.alert-success')) {
+            localStorage.removeItem('registrationFormData');
+        }
+    </script>
 </body>
 </html>

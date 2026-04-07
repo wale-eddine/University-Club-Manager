@@ -33,6 +33,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($user->updateProfile($user_id, $nom, $prenom, $email)) {
                 $success = 'Profil modifié avec succès!';
                 $user_info = $user->getUserById($user_id);
+
+                if (!empty($_SESSION['user']) && is_array($_SESSION['user'])) {
+                    $_SESSION['user'] = $user_info;
+                }
             } else {
                 $error = 'Erreur lors de la modification du profil.';
             }
