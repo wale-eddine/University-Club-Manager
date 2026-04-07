@@ -75,3 +75,14 @@
     color: #fff !important;
     transform: translateY(0) !important;
 }
+
+/* Keep the admin direct-add button grey while disabled, then let btn-success show when enabled. */
+#direct-add-submit:disabled {
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    color: #fff !important;
+    opacity: 1;
+    box-shadow: none;
+    transform: none;
+    cursor: not-allowed;
+}
