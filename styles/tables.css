@@ -18,8 +18,23 @@ table thead {
 /* Set cell padding and row separators. */
 table th, table td {
     padding: 15px;
-    text-align: left;
     border-bottom: 1px solid #ecf0f1;
+}
+
+/* Center header titles across all tables. */
+table th {
+    text-align: center;
+}
+
+/* Keep body values easy to scan. */
+table td {
+    text-align: left;
+}
+
+/* Center content specifically in club/event detail management tables. */
+.club-detail-page .detail-manage-table td,
+.event-detail-page .detail-manage-table td {
+    text-align: center;
 }
 
 /* Make sortable headers feel like part of the table cell. */
@@ -30,6 +45,7 @@ table th.sortable-column {
 table th.sortable-column .sortable-header-link {
     display: block;
     padding: 15px;
+    text-align: center;
     color: inherit;
     text-decoration: none;
     cursor: pointer;
@@ -38,6 +54,13 @@ table th.sortable-column .sortable-header-link {
 table th.sortable-column .sortable-header-link:hover {
     background-color: rgba(255, 255, 255, 0.12);
     text-decoration: none;
+}
+
+/* Reserve space for sort arrows so header text does not shift. */
+table th.sortable-column .sort-indicator {
+    display: inline-block;
+    width: 1.1em;
+    text-align: center;
 }
 
 /* Highlight body row on hover. */

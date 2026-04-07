@@ -44,17 +44,30 @@ if (!$club_info) {
     exit();
 }
 
-$memberSortOrder = strtolower((string)($_GET['member_order'] ?? 'desc'));
-if (!in_array($memberSortOrder, ['asc', 'desc'], true)) {
-    $memberSortOrder = 'desc';
+$memberSortBy = strtolower((string)($_GET['member_sort_by'] ?? 'date'));
+if (!in_array($memberSortBy, ['date', 'role'], true)) {
+    $memberSortBy = 'date';
 }
-$memberSortToggle = $memberSortOrder === 'asc' ? 'desc' : 'asc';
-$memberSortParams = $_GET;
-$memberSortParams['member_order'] = $memberSortToggle;
-$memberSortUrl = '?' . http_build_query($memberSortParams);
-$memberSortIndicator = $memberSortOrder === 'asc' ? '&uarr;' : '&darr;';
 
-$members = $club->getMembers($club_id, $memberSortOrder);
+$defaultMemberOrder = $memberSortBy === 'role' ? 'asc' : 'desc';
+$memberSortOrder = strtolower((string)($_GET['member_order'] ?? $defaultMemberOrder));
+if (!in_array($memberSortOrder, ['asc', 'desc'], true)) {
+    $memberSortOrder = $defaultMemberOrder;
+}
+
+$memberDateSortParams = $_GET;
+$memberDateSortParams['member_sort_by'] = 'date';
+$memberDateSortParams['member_order'] = ($memberSortBy === 'date' && $memberSortOrder === 'asc') ? 'desc' : 'asc';
+$memberSortUrl = '?' . http_build_query($memberDateSortParams);
+$memberSortIndicator = $memberSortBy === 'date' ? ($memberSortOrder === 'asc' ? '&uarr;' : '&darr;') : '';
+
+$memberRoleSortParams = $_GET;
+$memberRoleSortParams['member_sort_by'] = 'role';
+$memberRoleSortParams['member_order'] = ($memberSortBy === 'role' && $memberSortOrder === 'asc') ? 'desc' : 'asc';
+$memberRoleSortUrl = '?' . http_build_query($memberRoleSortParams);
+$memberRoleSortIndicator = $memberSortBy === 'role' ? ($memberSortOrder === 'asc' ? '&uarr;' : '&darr;') : '';
+
+$members = $club->getMembers($club_id, $memberSortBy, $memberSortOrder);
 $events = $event->getClubEvents($club_id);
 $is_member = isLoggedIn() ? $club->isMember($club_id, getCurrentUserId()) : false;
 $has_pending_request = isLoggedIn() ? $membership->hasRequest($club_id, getCurrentUserId()) : false;
@@ -317,7 +330,7 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Refresh page data after processing actions.
-    $members = $club->getMembers($club_id);
+    $members = $club->getMembers($club_id, $memberSortBy, $memberSortOrder);
     $events = $event->getClubEvents($club_id);
     $is_member = $club->isMember($club_id, getCurrentUserId());
     $has_pending_request = $membership->hasRequest($club_id, getCurrentUserId());

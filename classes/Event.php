@@ -407,8 +407,16 @@ class Event {
     }
 
     // List event participants with membership role labels.
-    public function getParticipants($event_id, $order = 'DESC') {
+    public function getParticipants($event_id, $sortBy = 'date', $order = 'DESC') {
+        $sortBy = strtolower((string)$sortBy);
+        if (!in_array($sortBy, ['date', 'role'], true)) {
+            $sortBy = 'date';
+        }
+
         $orderDirection = strtoupper((string)$order) === 'ASC' ? 'ASC' : 'DESC';
+        $roleOrderBy = "CASE WHEN cr.id IS NOT NULL THEN 1 WHEN cm.id IS NOT NULL THEN 2 ELSE 3 END " . $orderDirection . ", ep.date_inscription DESC, u.id DESC";
+        $dateOrderBy = "ep.date_inscription " . $orderDirection . ", u.id " . $orderDirection;
+        $orderBySql = $sortBy === 'role' ? $roleOrderBy : $dateOrderBy;
         $stmt = $this->db->prepare("SELECT u.id,
                                            u.nom,
                                            u.prenom,
@@ -427,7 +435,7 @@ class Event {
                                     LEFT JOIN CLUB_RESPONSABLES cr ON cr.club_id = c.id AND cr.user_id = u.id
                                     WHERE ep.event_id = ?
                                                                             AND COALESCE(u.account_status, 'active') = 'active'
-                                    ORDER BY ep.date_inscription " . $orderDirection);
+                                    ORDER BY " . $orderBySql);
         $stmt->execute([$event_id]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

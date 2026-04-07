@@ -154,12 +154,32 @@
             border: 1px solid #f5c2c2;
         }
 
+        #users-admin-table {
+            width: 100%;
+        }
+
+        #users-admin-table th {
+            text-align: center;
+        }
+
+        #users-admin-table td {
+            text-align: left;
+        }
+
+        #users-admin-table th:nth-child(1),
         #users-admin-table td:nth-child(1) { width: 70px; }
-        #users-admin-table td:nth-child(2) { width: 22%; }
-        #users-admin-table td:nth-child(3) { width: 24%; }
-        #users-admin-table td:nth-child(4) { width: 16%; }
-        #users-admin-table td:nth-child(5) { width: 18%; }
-        #users-admin-table td:nth-child(6) { width: 20%; }
+        #users-admin-table th:nth-child(2),
+        #users-admin-table td:nth-child(2) { width: 14%; }
+        #users-admin-table th:nth-child(3),
+        #users-admin-table td:nth-child(3) { width: 14%; }
+        #users-admin-table th:nth-child(4),
+        #users-admin-table td:nth-child(4) { width: 22%; }
+        #users-admin-table th:nth-child(5),
+        #users-admin-table td:nth-child(5) { width: 14%; }
+        #users-admin-table th:nth-child(6),
+        #users-admin-table td:nth-child(6) { width: 18%; }
+        #users-admin-table th:nth-child(7),
+        #users-admin-table td:nth-child(7) { width: 18%; }
 
         #clubs-admin-table td:nth-child(1) { width: 26%; }
         #clubs-admin-table td:nth-child(2) { width: 34%; }
@@ -291,6 +311,7 @@
                     <thead>
                         <tr>
                             <th>ID</th>
+                            <th>Prenom</th>
                             <th>Nom</th>
                             <th>Email</th>
                             <th>Rôle</th>
@@ -304,6 +325,8 @@
                                 <td><?php echo (int)$user['id']; ?></td>
                                 <td>
                                     <input type="text" class="admin-input-stack" form="user-form-<?php echo (int)$user['id']; ?>" name="prenom" value="<?php echo htmlspecialchars($user['prenom']); ?>" required>
+                                </td>
+                                <td>
                                     <input type="text" class="admin-input-stack" form="user-form-<?php echo (int)$user['id']; ?>" name="nom" value="<?php echo htmlspecialchars($user['nom']); ?>" required>
                                 </td>
                                 <td>

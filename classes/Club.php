@@ -340,8 +340,16 @@ class Club {
     }
 
     // List members belonging to a specific club.
-    public function getMembers($club_id, $order = 'DESC') {
+    public function getMembers($club_id, $sortBy = 'date', $order = 'DESC') {
+        $sortBy = strtolower((string)$sortBy);
+        if (!in_array($sortBy, ['date', 'role'], true)) {
+            $sortBy = 'date';
+        }
+
         $orderDirection = strtoupper((string)$order) === 'ASC' ? 'ASC' : 'DESC';
+        $roleOrderBy = "CASE WHEN cr.id IS NOT NULL THEN 1 ELSE 2 END " . $orderDirection . ", COALESCE(cm.date_adhesion, cr.assigned_at) DESC, u.id DESC";
+        $dateOrderBy = "COALESCE(cm.date_adhesion, cr.assigned_at) " . $orderDirection . ", u.id " . $orderDirection;
+        $orderBySql = $sortBy === 'role' ? $roleOrderBy : $dateOrderBy;
          $stmt = $this->db->prepare("SELECT u.id,
                              u.nom,
                              u.prenom,
@@ -356,7 +364,7 @@ class Club {
                              ON cr.user_id = u.id AND cr.club_id = ?
                          WHERE (cm.id IS NOT NULL OR cr.id IS NOT NULL)
                            AND COALESCE(u.account_status, 'active') = 'active'
-                         ORDER BY COALESCE(cm.date_adhesion, cr.assigned_at) " . $orderDirection . ", u.id " . $orderDirection);
+                                                 ORDER BY " . $orderBySql);
          $stmt->execute([(int)$club_id, (int)$club_id]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

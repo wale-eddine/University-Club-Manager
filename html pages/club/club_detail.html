@@ -129,10 +129,14 @@
                         <tr>
                             <th>Nom</th>
                             <th>Email</th>
-                            <th>Rôle</th>
-                            <th class="sortable-column" aria-sort="<?php echo $memberSortOrder === 'asc' ? 'ascending' : 'descending'; ?>">
+                            <th class="sortable-column" aria-sort="<?php echo $memberSortBy === 'role' ? ($memberSortOrder === 'asc' ? 'ascending' : 'descending') : 'none'; ?>">
+                                <a class="sortable-header-link" href="<?php echo htmlspecialchars($memberRoleSortUrl); ?>" title="Trier par rôle">
+                                    Rôle <span class="sort-indicator"><?php echo $memberRoleSortIndicator !== '' ? $memberRoleSortIndicator : '&nbsp;'; ?></span>
+                                </a>
+                            </th>
+                            <th class="sortable-column" aria-sort="<?php echo $memberSortBy === 'date' ? ($memberSortOrder === 'asc' ? 'ascending' : 'descending') : 'none'; ?>">
                                 <a class="sortable-header-link" href="<?php echo htmlspecialchars($memberSortUrl); ?>" title="Trier par date d'adhésion">
-                                    Adhésion <?php echo $memberSortIndicator; ?>
+                                    Adhésion <span class="sort-indicator"><?php echo $memberSortIndicator !== '' ? $memberSortIndicator : '&nbsp;'; ?></span>
                                 </a>
                             </th>
                             <?php if ($can_manage_club): ?>

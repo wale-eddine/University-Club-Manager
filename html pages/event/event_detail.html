@@ -143,10 +143,14 @@
                         <tr>
                             <th>Nom</th>
                             <th>Email</th>
-                            <th>Statut</th>
-                            <th class="sortable-column" aria-sort="<?php echo $participantSortOrder === 'asc' ? 'ascending' : 'descending'; ?>">
+                            <th class="sortable-column" aria-sort="<?php echo $participantSortBy === 'role' ? ($participantSortOrder === 'asc' ? 'ascending' : 'descending') : 'none'; ?>">
+                                <a class="sortable-header-link" href="<?php echo htmlspecialchars($participantRoleSortUrl); ?>" title="Trier par rôle">
+                                    Rôle <span class="sort-indicator"><?php echo $participantRoleSortIndicator !== '' ? $participantRoleSortIndicator : '&nbsp;'; ?></span>
+                                </a>
+                            </th>
+                            <th class="sortable-column" aria-sort="<?php echo $participantSortBy === 'date' ? ($participantSortOrder === 'asc' ? 'ascending' : 'descending') : 'none'; ?>">
                                 <a class="sortable-header-link" href="<?php echo htmlspecialchars($participantSortUrl); ?>" title="Trier par date d'inscription">
-                                    Date d'Inscription <?php echo $participantSortIndicator; ?>
+                                    Date d'Inscription <span class="sort-indicator"><?php echo $participantSortIndicator !== '' ? $participantSortIndicator : '&nbsp;'; ?></span>
                                 </a>
                             </th>
                             <?php if ($can_manage_event): ?>
@@ -159,11 +163,19 @@
                             <tr>
                                 <td><?php echo htmlspecialchars($p['prenom'] . ' ' . $p['nom']); ?></td>
                                 <td><?php echo htmlspecialchars($p['email']); ?></td>
-                                <td><?php echo htmlspecialchars($p['participant_role'] ?? 'Non membre'); ?></td>
+                                <td>
+                                    <?php if (($p['participant_role'] ?? 'Non membre') === 'Responsable'): ?>
+                                        <span class="badge badge-primary">Responsable</span>
+                                    <?php elseif (($p['participant_role'] ?? 'Non membre') === 'Membre'): ?>
+                                        <span class="badge">Membre</span>
+                                    <?php else: ?>
+                                        <span class="badge">Non membre</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?php echo date('d/m/Y H:i', strtotime($p['date_inscription'])); ?></td>
                                 <?php if ($can_manage_event): ?>
                                     <td class="participant-action-cell" style="display: none;">
-                                        <?php if ((int)$p['id'] !== (int)$event_info['club_responsable_id']): ?>
+                                        <?php if (($p['participant_role'] ?? 'Non membre') !== 'Responsable'): ?>
                                             <button type="button" class="participant-remove-btn btn btn-sm danger-outline-btn" data-user-id="<?php echo (int)$p['id']; ?>" style="display: none;">Retirer</button>
                                         <?php else: ?>
                                             <span class="badge badge-primary">Responsable</span>

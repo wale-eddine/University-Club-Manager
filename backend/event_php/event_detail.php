@@ -44,17 +44,30 @@ if (!$event_info) {
     exit();
 }
 
-$participantSortOrder = strtolower((string)($_GET['participant_order'] ?? 'desc'));
-if (!in_array($participantSortOrder, ['asc', 'desc'], true)) {
-    $participantSortOrder = 'desc';
+$participantSortBy = strtolower((string)($_GET['participant_sort_by'] ?? 'date'));
+if (!in_array($participantSortBy, ['date', 'role'], true)) {
+    $participantSortBy = 'date';
 }
-$participantSortToggle = $participantSortOrder === 'asc' ? 'desc' : 'asc';
-$participantSortParams = $_GET;
-$participantSortParams['participant_order'] = $participantSortToggle;
-$participantSortUrl = '?' . http_build_query($participantSortParams);
-$participantSortIndicator = $participantSortOrder === 'asc' ? '&uarr;' : '&darr;';
 
-$participants = $event->getParticipants($event_id, $participantSortOrder);
+$defaultParticipantOrder = $participantSortBy === 'role' ? 'asc' : 'desc';
+$participantSortOrder = strtolower((string)($_GET['participant_order'] ?? $defaultParticipantOrder));
+if (!in_array($participantSortOrder, ['asc', 'desc'], true)) {
+    $participantSortOrder = $defaultParticipantOrder;
+}
+
+$participantDateSortParams = $_GET;
+$participantDateSortParams['participant_sort_by'] = 'date';
+$participantDateSortParams['participant_order'] = ($participantSortBy === 'date' && $participantSortOrder === 'asc') ? 'desc' : 'asc';
+$participantSortUrl = '?' . http_build_query($participantDateSortParams);
+$participantSortIndicator = $participantSortBy === 'date' ? ($participantSortOrder === 'asc' ? '&uarr;' : '&darr;') : '';
+
+$participantRoleSortParams = $_GET;
+$participantRoleSortParams['participant_sort_by'] = 'role';
+$participantRoleSortParams['participant_order'] = ($participantSortBy === 'role' && $participantSortOrder === 'asc') ? 'desc' : 'asc';
+$participantRoleSortUrl = '?' . http_build_query($participantRoleSortParams);
+$participantRoleSortIndicator = $participantSortBy === 'role' ? ($participantSortOrder === 'asc' ? '&uarr;' : '&darr;') : '';
+
+$participants = $event->getParticipants($event_id, $participantSortBy, $participantSortOrder);
 $is_participant = isLoggedIn() ? $event->isParticipant($event_id, getCurrentUserId()) : false;
 $is_club_owner = isLoggedIn() && canManageClubById((int)$event_info['club_id']);
 $can_manage_event = isLoggedIn() && canManageClubById((int)$event_info['club_id']);
@@ -315,7 +328,7 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Refresh page data after action processing.
     if (!isset($_POST['action']) || $_POST['action'] !== 'delete_event') {
-        $participants = $event->getParticipants($event_id);
+        $participants = $event->getParticipants($event_id, $participantSortBy, $participantSortOrder);
         $is_participant = $event->isParticipant($event_id, getCurrentUserId());
         $is_club_member = $club->isMember((int)$event_info['club_id'], getCurrentUserId());
         $has_pending_club_request = $membership->hasRequest((int)$event_info['club_id'], getCurrentUserId());
