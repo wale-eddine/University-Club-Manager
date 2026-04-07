@@ -118,7 +118,10 @@ University-Club-Manager/
 ├── scripts/
 │   ├── home-carousel.js
 │   ├── navbar.js
-│   └── sortable-table.js
+│   ├── sortable-table.js
+│   ├── reset_owner_db.php
+│   ├── reset_owner_db.bat
+│   └── reset_owner_db.sh
 ├── styles/
 │   ├── variables.css
 │   ├── layout.css
@@ -165,6 +168,41 @@ Le schema `database/schema.sql` contient notamment:
 - `google_id`
 - `avatar_url`
 - `email_verified_at`
+
+## Reset proprietaire (vider la base + creer un admin)
+
+Pour repartir de zero en local, un script interactif est disponible:
+
+- `scripts/reset_owner_db.php` (script principal)
+- `scripts/reset_owner_db.bat` (wrapper Windows / PowerShell)
+- `scripts/reset_owner_db.sh` (wrapper Git Bash / WSL)
+
+Ce script fait exactement 3 actions:
+
+1. Demande l'email admin.
+2. Demande le mot de passe admin (minimum 8 caracteres).
+3. Vide toutes les tables applicatives puis cree un compte admin verifie.
+
+Execution recommandee sous Windows:
+
+```powershell
+.\scripts\reset_owner_db.bat
+```
+
+Sortie attendue (exemple):
+
+```text
+Admin email: owner@example.com
+Admin password (min 8 chars): myStrongPass123
+Database reset complete.
+Admin account created for: owner@example.com
+Done.
+```
+
+Important:
+
+- Usage local/dev uniquement (operation destructive).
+- Le script utilise la configuration DB definie dans `config/Database.php`.
 
 ## Point d'entree
 
