@@ -47,6 +47,8 @@ Le projet couvre le cycle principal d'un club universitaire:
 - Design responsive (desktop/tablette/mobile).
 - Recherche sur les listes (clubs/evenements).
 - Tri des tableaux avec `scripts/sortable-table.js`.
+- Tri exclusif par colonne sur les tableaux de details des clubs et evenements: role ou date d'adhesion/inscription, avec ordre ascendant/descendant.
+- Affichage des roles avec badges coherents dans les tableaux de details.
 - Carousel d'accueil avec navigation et defilement auto.
 
 ## Stack technique
@@ -238,6 +240,7 @@ Important:
 Le projet inclut maintenant une page reservee aux comptes `admin`:
 
 - Vue et modification de tous les utilisateurs.
+- Colonnes separees pour prenom et nom dans le tableau utilisateurs.
 - Changement de role entre `etudiant` et `responsable`.
 - Activation/desactivation de compte avec raison obligatoire en mode inactif.
 - Attribution ou retrait d'un responsable sur un club (multi-responsables).
