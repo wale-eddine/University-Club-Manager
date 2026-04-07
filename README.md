@@ -179,9 +179,52 @@ Le schema `database/schema.sql` contient notamment:
 3. Participer aux evenements disponibles.
 4. Pour un admin: gerer clubs, membres, demandes et evenements.
 
+## Configuration locale des secrets
+
+Deux fichiers locaux sont utilises pour le developpement:
+
+- `config/google_oauth_client.json`
+- `config/mail_credentials.php`
+
+Ils sont deja ignores par git (`.gitignore`) pour eviter de commiter des secrets.
+
+Ordre de priorite applique par le code:
+
+1. Variables d'environnement
+2. Fichiers locaux dans `config/`
+3. Valeurs par defaut (uniquement quand prevu par le code)
+
 ## Connexion avec Google
 
 La connexion Google est basee sur OAuth 2.0 cote serveur.
+
+### Option A (recommandee en local): fichier JSON Google
+
+1. Ouvrir Google Cloud Console -> APIs & Services -> Credentials.
+2. Creer (ou reutiliser) un OAuth Client ID de type Web application.
+3. Ajouter votre callback dans Authorized redirect URIs (correspondance exacte obligatoire).
+4. Telecharger le JSON client OAuth.
+5. Copier son contenu dans `config/google_oauth_client.json`.
+
+Format attendu:
+
+```json
+{
+	"web": {
+		"client_id": "...apps.googleusercontent.com",
+		"client_secret": "...",
+		"redirect_uris": [
+			"http://localhost/.../backend/profile_php/google_callback.php"
+		]
+	}
+}
+```
+
+Exemple de callback utilisee dans ce workspace:
+
+`http://localhost/Frontend%20course(safebp)/repos/University-Club-Manager/backend/profile_php/google_callback.php`
+
+Important: ne mettez pas `login.php` comme redirect URI. La route de callback est `google_callback.php`.
 
 ### Variables d'environnement requises
 
@@ -196,6 +239,15 @@ $env:GOOGLE_OAUTH_CLIENT_ID="votre-client-id.apps.googleusercontent.com"
 $env:GOOGLE_OAUTH_CLIENT_SECRET="votre-client-secret"
 $env:GOOGLE_OAUTH_REDIRECT_URI="http://localhost/University-Club-Manager/backend/profile_php/google_callback.php"
 ```
+
+Variables optionnelles utiles:
+
+- `GOOGLE_OAUTH_JSON_PATH` pour pointer vers un JSON hors du projet.
+
+Notes de resolution:
+
+- Si `GOOGLE_OAUTH_CLIENT_ID` et `GOOGLE_OAUTH_CLIENT_SECRET` sont definis, ils priment sur le JSON.
+- Si `GOOGLE_OAUTH_REDIRECT_URI` est vide, l'app prend d'abord la valeur du JSON, sinon construit une valeur par defaut.
 
 ### Mise a jour de base existante
 
@@ -267,11 +319,40 @@ return [
 ];
 ```
 
+### Variables d'environnement equivalentes
+
+Vous pouvez remplacer le fichier local avec:
+
+- `MAIL_SMTP_HOST`
+- `MAIL_SMTP_PORT`
+- `MAIL_SMTP_USERNAME`
+- `MAIL_SMTP_PASSWORD`
+- `MAIL_FROM_ADDRESS`
+- `MAIL_FROM_NAME`
+
+Exemple PowerShell:
+
+```powershell
+$env:MAIL_SMTP_HOST="smtp.gmail.com"
+$env:MAIL_SMTP_PORT="587"
+$env:MAIL_SMTP_USERNAME="votre-compte@gmail.com"
+$env:MAIL_SMTP_PASSWORD="votre-app-password"
+$env:MAIL_FROM_ADDRESS="votre-compte@gmail.com"
+$env:MAIL_FROM_NAME="University Clubs"
+```
+
 ### Important
 
 - Utiliser un App Password Google (pas le mot de passe principal du compte).
 - Le mot de passe peut etre colle avec ou sans espaces (ils sont normalises par le code).
 - En production, preferer des variables d'environnement plutot qu'un fichier local.
+
+### Verification rapide (email)
+
+1. Lancer une inscription avec une vraie adresse email.
+2. Verifier la reception de l'email de verification.
+3. Tester ensuite `Mot de passe oublie` pour verifier l'email de reset.
+4. En cas d'echec SMTP, controler host/port/username/app-password.
 
 ## Checklist de test auth
 
