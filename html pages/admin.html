@@ -513,11 +513,49 @@
             <?php if (empty($responsableLogs)): ?>
                 <p class="admin-section-note">Aucune action de responsable enregistree pour le moment.</p>
             <?php else: ?>
-                <div class="admin-table-wrap">
-                    <table class="admin-table">
+                <div class="admin-toolbar" style="grid-template-columns: 1fr 1fr 1fr;">
+                    <div class="form-group">
+                        <label for="logs-club-filter">Club</label>
+                        <select id="logs-club-filter">
+                            <option value="none" selected>Aucun</option>
+                            <?php foreach ($clubs as $club): ?>
+                                <option value="<?php echo (int)$club['id']; ?>"><?php echo htmlspecialchars($club['nom']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="logs-responsable-filter">Responsable</label>
+                        <select id="logs-responsable-filter">
+                            <option value="none" selected>Aucun</option>
+                            <?php foreach ($responsableUsers as $respUser): ?>
+                                <option value="<?php echo (int)$respUser['id']; ?>"><?php echo htmlspecialchars(trim((string)$respUser['prenom'] . ' ' . (string)$respUser['nom'])); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="logs-type-filter">Type d'action</label>
+                        <select id="logs-type-filter">
+                            <option value="none" selected>Tous</option>
+                            <option value="demande">Demandes (validation/rejet)</option>
+                            <option value="edit">Edit (mise a jour)</option>
+                            <option value="delete">Delete (suppression)</option>
+                            <option value="kick">Kick (exclusion)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <p id="logs-admin-empty-state" class="admin-section-note">Aucun filtre applique. Selectionnez un club, un responsable et/ou un type d'action pour afficher la table.</p>
+
+                <div class="admin-table-wrap" id="logs-admin-table-wrap" style="display: none;">
+                    <table class="admin-table" id="logs-admin-table">
                         <thead>
                             <tr>
-                                <th>Date</th>
+                                <th>
+                                    <button type="button" id="logs-date-sort-toggle" style="all: unset; cursor: pointer; font: inherit; color: inherit; display: inline-flex; align-items: center; gap: 6px;">
+                                        <span>Date</span>
+                                        <span id="logs-date-sort-indicator" aria-hidden="true">&darr;</span>
+                                    </button>
+                                </th>
                                 <th>Responsable</th>
                                 <th>Action</th>
                                 <th>Cible</th>
@@ -537,8 +575,20 @@
                                         $targetId = (int)($log['target_id'] ?? 0);
                                         $targetLabel = $targetId > 0 ? ($targetType . ' #' . $targetId) : $targetType;
                                     }
+
+                                    $actionType = strtolower(trim((string)($log['action_type'] ?? '')));
+                                    $logCategory = 'other';
+                                    if (strpos($actionType, 'approve') !== false || strpos($actionType, 'reject') !== false || strpos($actionType, 'request') !== false || strpos($actionType, 'demande') !== false) {
+                                        $logCategory = 'demande';
+                                    } elseif (strpos($actionType, 'edit') !== false || strpos($actionType, 'update') !== false || strpos($actionType, 'modify') !== false) {
+                                        $logCategory = 'edit';
+                                    } elseif (strpos($actionType, 'delete') !== false || strpos($actionType, 'remove') !== false || strpos($actionType, 'suppression') !== false) {
+                                        $logCategory = 'delete';
+                                    } elseif (strpos($actionType, 'kick') !== false || strpos($actionType, 'exclude') !== false || strpos($actionType, 'exclu') !== false) {
+                                        $logCategory = 'kick';
+                                    }
                                 ?>
-                                <tr>
+                                <tr data-club-id="<?php echo (int)($log['club_id'] ?? 0); ?>" data-responsable-id="<?php echo (int)($log['actor_user_id'] ?? 0); ?>" data-log-type="<?php echo htmlspecialchars($logCategory); ?>" data-log-ts="<?php echo (int)strtotime((string)($log['created_at'] ?? 'now')); ?>">
                                     <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime((string)($log['created_at'] ?? 'now')))); ?></td>
                                     <td><?php echo htmlspecialchars($actorName); ?></td>
                                     <td><?php echo htmlspecialchars((string)($log['action_type'] ?? 'action')); ?></td>
@@ -572,6 +622,15 @@
             const clubsTableWrap = document.getElementById('clubs-admin-table-wrap');
             const clubsEmptyState = document.getElementById('clubs-admin-empty-state');
             const clubsRows = document.querySelectorAll('#clubs-admin-table tbody tr');
+            const logsClubFilter = document.getElementById('logs-club-filter');
+            const logsResponsableFilter = document.getElementById('logs-responsable-filter');
+            const logsTypeFilter = document.getElementById('logs-type-filter');
+            const logsDateSortToggle = document.getElementById('logs-date-sort-toggle');
+            const logsDateSortIndicator = document.getElementById('logs-date-sort-indicator');
+            const logsTableWrap = document.getElementById('logs-admin-table-wrap');
+            const logsEmptyState = document.getElementById('logs-admin-empty-state');
+            const logsRows = document.querySelectorAll('#logs-admin-table tbody tr');
+            let logsDateSortOrder = 'desc';
             const allResponsablesNode = document.getElementById('all-responsables-json');
             let allResponsablesData = [];
             try {
@@ -877,6 +936,113 @@
                 }
             }
 
+            function applyLogsTableFilters() {
+                if (!logsTableWrap || !logsEmptyState || logsRows.length === 0) {
+                    return;
+                }
+
+                const clubValue = (logsClubFilter && logsClubFilter.value) ? logsClubFilter.value : 'none';
+                const responsableValue = (logsResponsableFilter && logsResponsableFilter.value) ? logsResponsableFilter.value : 'none';
+                const typeValue = (logsTypeFilter && logsTypeFilter.value) ? logsTypeFilter.value : 'none';
+                const hasCriteria = clubValue !== 'none' || responsableValue !== 'none' || typeValue !== 'none';
+                let visibleCount = 0;
+
+                function updateLogsEmptyStateMessage() {
+                    if (!logsEmptyState) {
+                        return;
+                    }
+
+                    if (!hasCriteria) {
+                        logsEmptyState.textContent = 'Aucun filtre applique. Selectionnez un club, un responsable et/ou un type d\'action pour afficher la table.';
+                        return;
+                    }
+
+                    if (clubValue !== 'none' && responsableValue !== 'none' && typeValue !== 'none') {
+                        logsEmptyState.textContent = 'Aucun log ne correspond a cette combinaison club + responsable + type.';
+                        return;
+                    }
+
+                    if (clubValue !== 'none' && responsableValue !== 'none') {
+                        logsEmptyState.textContent = 'Aucun log pour ce responsable dans ce club.';
+                        return;
+                    }
+
+                    if (responsableValue !== 'none' && typeValue !== 'none') {
+                        logsEmptyState.textContent = 'Ce responsable n\'a pas de logs pour ce type d\'action.';
+                        return;
+                    }
+
+                    if (clubValue !== 'none' && typeValue !== 'none') {
+                        logsEmptyState.textContent = 'Aucun log de ce type pour le club selectionne.';
+                        return;
+                    }
+
+                    if (clubValue !== 'none') {
+                        logsEmptyState.textContent = 'Aucun log pour le club selectionne.';
+                        return;
+                    }
+
+                    if (responsableValue !== 'none') {
+                        logsEmptyState.textContent = 'Aucun log pour le responsable selectionne.';
+                        return;
+                    }
+
+                    logsEmptyState.textContent = 'Aucun log pour le type d\'action selectionne.';
+                }
+
+                if (!hasCriteria) {
+                    logsTableWrap.style.display = 'none';
+                    logsEmptyState.style.display = '';
+                    updateLogsEmptyStateMessage();
+                    return;
+                }
+
+                const visibleRows = [];
+
+                logsRows.forEach(function (row) {
+                    const rowClubId = row.getAttribute('data-club-id') || '';
+                    const rowResponsableId = row.getAttribute('data-responsable-id') || '';
+                    const rowType = row.getAttribute('data-log-type') || 'other';
+
+                    const matchesClub = clubValue === 'none' || rowClubId === clubValue;
+                    const matchesResponsable = responsableValue === 'none' || rowResponsableId === responsableValue;
+                    const matchesType = typeValue === 'none' || rowType === typeValue;
+                    const isVisible = matchesClub && matchesResponsable && matchesType;
+
+                    row.style.display = isVisible ? '' : 'none';
+                    if (isVisible) {
+                        visibleCount++;
+                        visibleRows.push(row);
+                    }
+                });
+
+                const direction = logsDateSortOrder === 'asc' ? 1 : -1;
+                visibleRows.sort(function (a, b) {
+                    const tsA = parseInt(a.getAttribute('data-log-ts') || '0', 10);
+                    const tsB = parseInt(b.getAttribute('data-log-ts') || '0', 10);
+                    if (tsA === tsB) {
+                        return 0;
+                    }
+                    return tsA > tsB ? direction : -direction;
+                });
+
+                const tbody = document.querySelector('#logs-admin-table tbody');
+                if (tbody) {
+                    visibleRows.forEach(function (row) {
+                        tbody.appendChild(row);
+                    });
+                }
+
+                if (visibleCount === 0) {
+                    logsTableWrap.style.display = 'none';
+                    logsEmptyState.style.display = '';
+                    updateLogsEmptyStateMessage();
+                } else {
+                    logsTableWrap.style.display = '';
+                    logsEmptyState.style.display = 'none';
+                }
+            }
+
             function refreshClubResponsableFilterOptions() {
                 if (!clubResponsableFilter) {
                     return;
@@ -1051,6 +1217,37 @@
                         clubRowFilter.value = 'none';
                     }
                     applyClubsTableFilters();
+                });
+            }
+
+            if (logsClubFilter) {
+                logsClubFilter.addEventListener('change', applyLogsTableFilters);
+            }
+
+            if (logsResponsableFilter) {
+                logsResponsableFilter.addEventListener('change', applyLogsTableFilters);
+            }
+
+            if (logsTypeFilter) {
+                logsTypeFilter.addEventListener('change', applyLogsTableFilters);
+            }
+
+            function updateLogsDateSortIndicator() {
+                if (!logsDateSortIndicator) {
+                    return;
+                }
+
+                logsDateSortIndicator.innerHTML = logsDateSortOrder === 'asc' ? '&uarr;' : '&darr;';
+                if (logsDateSortToggle) {
+                    logsDateSortToggle.setAttribute('title', logsDateSortOrder === 'asc' ? 'Tri croissant' : 'Tri decroissant');
+                }
+            }
+
+            if (logsDateSortToggle) {
+                logsDateSortToggle.addEventListener('click', function () {
+                    logsDateSortOrder = logsDateSortOrder === 'asc' ? 'desc' : 'asc';
+                    updateLogsDateSortIndicator();
+                    applyLogsTableFilters();
                 });
             }
 
@@ -1409,6 +1606,8 @@
 
             applyFilters();
             applyClubsTableFilters();
+            updateLogsDateSortIndicator();
+            applyLogsTableFilters();
             refreshDirectUserList();
             updateDirectStudentInfo();
             hideAllUserSaveButtons();
