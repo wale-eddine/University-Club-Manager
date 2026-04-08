@@ -15,6 +15,8 @@ function redirectToLoginWithOAuthError($message) {
         $loginHref .= '&redirect=' . urlencode($redirectAfterLogin);
     }
 
+    unset($_SESSION['google_oauth_profile']);
+
     header('Location: ' . $loginHref);
     exit();
 }
@@ -233,6 +235,15 @@ if ($nom === '') {
     $nom = 'Google';
 }
 
+$_SESSION['google_oauth_profile'] = [
+    'google_id' => $googleId,
+    'email' => $email,
+    'nom' => $nom,
+    'prenom' => $prenom,
+    'avatar_url' => $avatarUrl,
+    'created_at' => time(),
+];
+
 $db = new Database();
 $connection = $db->getConnection();
 $userModel = new User($connection);
@@ -247,10 +258,17 @@ if (!$user) {
         $userModel->markEmailVerified((int)$existingByEmail['id']);
         $user = $userModel->getUserById((int)$existingByEmail['id']);
     } else {
-        $userModel->createGoogleUser($nom, $prenom, $email, $googleId, $avatarUrl !== '' ? $avatarUrl : null);
-        $user = $userModel->getUserByEmail($email);
+        header('Location: google_set_password.php');
+        exit();
     }
 }
+
+if (!$user) {
+    redirectToLoginWithOAuthError('Connexion Google impossible.');
+}
+
+$userModel->markEmailVerified((int)$user['id']);
+$user = $userModel->getUserById((int)$user['id']);
 
 if (!$user) {
     redirectToLoginWithOAuthError('Connexion Google impossible.');
@@ -259,6 +277,8 @@ if (!$user) {
 if ((string)($user['account_status'] ?? 'active') !== 'active') {
     redirectToLoginWithOAuthError('Votre compte a ete desactive par un administrateur.');
 }
+
+unset($_SESSION['google_oauth_profile']);
 
 $_SESSION['user_id'] = $user['id'];
 $_SESSION['user'] = $user;

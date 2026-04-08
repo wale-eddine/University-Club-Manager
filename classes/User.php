@@ -126,16 +126,21 @@ class User {
     }
 
     // Create a new user account from Google profile data.
-    public function createGoogleUser($nom, $prenom, $email, $googleId, $avatarUrl = null) {
+    public function createGoogleUser($nom, $prenom, $email, $googleId, $avatarUrl = null, $password = null) {
         $email = $this->normalizeEmail($email);
         $nom = $this->normalizeName($nom, 'Google');
         $prenom = $this->normalizeName($prenom, 'Utilisateur');
         $specialId = $this->buildSpecialId($email, 'active');
+        $hashedPassword = null;
+
+        if (is_string($password) && trim($password) !== '') {
+            $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+        }
 
         $stmt = $this->db->prepare("INSERT INTO USERS (nom, prenom, email, special_id, mot_de_passe, google_id, avatar_url, email_verified_at, account_status, inactive_reason)
-                                    VALUES (?, ?, ?, ?, NULL, ?, ?, NOW(), 'active', NULL)");
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 'active', NULL)");
 
-        return $stmt->execute([$nom, $prenom, $email, $specialId, trim((string)$googleId), $avatarUrl]);
+        return $stmt->execute([$nom, $prenom, $email, $specialId, $hashedPassword, trim((string)$googleId), $avatarUrl]);
     }
 
     // Marks a user's email as verified.

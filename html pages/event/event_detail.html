@@ -92,6 +92,7 @@
                 <p><strong>Capacité maximale:</strong> <?php echo (int)$event_info['max_participants']; ?></p>
             <?php endif; ?>
             <p><strong>Accès:</strong> <?php echo ((int)($event_info['allow_non_members'] ?? 0) === 1) ? 'Ouvert à tous' : 'Réservé aux membres du club'; ?></p>
+            <p><strong>Tarification:</strong> <?php echo ((int)($event_info['is_paid_event'] ?? 0) === 1) ? 'Événement payant' : 'Événement gratuit'; ?></p>
 
             <?php if (isLoggedIn()): ?>
                 <form method="POST" class="action-form-compact" style="text-align: center;">
@@ -153,6 +154,14 @@
                                     Date d'Inscription <span class="sort-indicator"><?php echo $participantSortIndicator !== '' ? $participantSortIndicator : '&nbsp;'; ?></span>
                                 </a>
                             </th>
+                            <?php if ($can_manage_event && ((int)($event_info['is_paid_event'] ?? 0) === 1)): ?>
+                                <th>Paiement</th>
+                                <th class="sortable-column" aria-sort="<?php echo $participantSortBy === 'payment_date' ? ($participantSortOrder === 'asc' ? 'ascending' : 'descending') : 'none'; ?>">
+                                    <a class="sortable-header-link" href="<?php echo htmlspecialchars($participantPaymentDateSortUrl); ?>" title="Trier par date de paiement">
+                                        Date de paiement <span class="sort-indicator"><?php echo $participantPaymentDateSortIndicator !== '' ? $participantPaymentDateSortIndicator : '&nbsp;'; ?></span>
+                                    </a>
+                                </th>
+                            <?php endif; ?>
                             <?php if ($can_manage_event): ?>
                                 <th class="participant-action-header" style="display: none;">Action</th>
                             <?php endif; ?>
@@ -173,6 +182,29 @@
                                     <?php endif; ?>
                                 </td>
                                 <td><?php echo date('d/m/Y H:i', strtotime($p['date_inscription'])); ?></td>
+                                <?php if ($can_manage_event && ((int)($event_info['is_paid_event'] ?? 0) === 1)): ?>
+                                    <td>
+                                        <?php if (($p['participant_role'] ?? 'Non membre') !== 'Responsable'): ?>
+                                            <form method="POST" class="js-payment-toggle-form" style="background: transparent; padding: 0; box-shadow: none; max-width: none; margin: 0;">
+                                                <input type="hidden" name="action" value="set_payment_status">
+                                                <input type="hidden" name="user_id" value="<?php echo (int)$p['id']; ?>">
+                                                <input type="hidden" name="paid" value="<?php echo ((int)($p['payment_status'] ?? 0) === 1) ? '0' : '1'; ?>">
+                                                <button type="submit" class="btn btn-sm js-payment-toggle-btn <?php echo ((int)($p['payment_status'] ?? 0) === 1) ? 'btn-success' : 'btn-outline-secondary'; ?>">
+                                                    <?php echo ((int)($p['payment_status'] ?? 0) === 1) ? 'Paye' : 'Non paye'; ?>
+                                                </button>
+                                            </form>
+                                        <?php else: ?>
+                                            <span class="badge badge-primary">Responsable</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="js-payment-date-cell" data-user-id="<?php echo (int)$p['id']; ?>">
+                                        <?php if (!empty($p['payment_date'])): ?>
+                                            <?php echo htmlspecialchars(date('d/m/Y H:i', strtotime((string)$p['payment_date']))); ?>
+                                        <?php else: ?>
+                                            -
+                                        <?php endif; ?>
+                                    </td>
+                                <?php endif; ?>
                                 <?php if ($can_manage_event): ?>
                                     <td class="participant-action-cell" style="display: none;">
                                         <?php if (($p['participant_role'] ?? 'Non membre') !== 'Responsable'): ?>
@@ -240,6 +272,7 @@
             const participantsCountSummary = document.getElementById('event-participants-count-summary');
             const participantsCountHeading = document.getElementById('event-participants-count-heading');
             const participantsTableBody = document.querySelector('#participants-table tbody');
+            const paymentToggleForms = document.querySelectorAll('.js-payment-toggle-form');
             const confirmBtn = document.getElementById('delete-confirm-btn');
             const cancelBtn = document.getElementById('delete-cancel-btn');
             const modalMessage = document.getElementById('confirm-modal-message');
@@ -458,6 +491,62 @@
                     }, false);
                 });
             }
+
+            paymentToggleForms.forEach(function(form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+
+                    const button = form.querySelector('.js-payment-toggle-btn');
+                    const userIdInput = form.querySelector('input[name="user_id"]');
+                    const paidInput = form.querySelector('input[name="paid"]');
+
+                    if (!button || !userIdInput || !paidInput) {
+                        return;
+                    }
+
+                    const userId = userIdInput.value;
+                    const params = new URLSearchParams(new FormData(form));
+                    params.append('ajax', '1');
+
+                    button.disabled = true;
+
+                    fetch(window.location.href, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: params.toString()
+                    })
+                    .then(function(response) {
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        if (!data || !data.success) {
+                            openConfirmModal((data && data.message) ? data.message : 'Impossible de mettre a jour le paiement.', null, true);
+                            return;
+                        }
+
+                        const isPaid = !!data.paid;
+                        paidInput.value = isPaid ? '0' : '1';
+                        button.textContent = isPaid ? 'Paye' : 'Non paye';
+                        button.classList.toggle('btn-success', isPaid);
+                        button.classList.toggle('btn-outline-secondary', !isPaid);
+
+                        const dateCell = document.querySelector('.js-payment-date-cell[data-user-id="' + userId + '"]');
+                        if (dateCell) {
+                            dateCell.textContent = (data.payment_date_display || '-');
+                        }
+                    })
+                    .catch(function() {
+                        openConfirmModal('Une erreur est survenue pendant la mise a jour du paiement.', null, true);
+                    })
+                    .finally(function() {
+                        button.disabled = false;
+                    });
+                });
+            });
 
             confirmBtn.addEventListener('click', function() {
                 const callback = pendingConfirmCallback;

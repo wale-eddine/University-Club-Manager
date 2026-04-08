@@ -93,6 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $max_participants_raw = trim($_POST['max_participants'] ?? '');
     $max_participants = null;
     $allow_non_members = isset($_POST['allow_non_members']) ? 1 : 0;
+    $is_paid_event = isset($_POST['is_paid_event']) ? 1 : 0;
 
     if (empty($titre) || empty($description) || empty($date_debut) || empty($date_fin) || empty($lieu)) {
         $error = 'Veuillez remplir tous les champs.';
@@ -117,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         }
 
-        if ($event->createEvent($club_id, $titre, $description, $date_debut, $date_fin, $lieu, $imagePath, $max_participants, $allow_non_members)) {
+        if ($event->createEvent($club_id, $titre, $description, $date_debut, $date_fin, $lieu, $imagePath, $max_participants, $allow_non_members, $is_paid_event)) {
             $success = 'Événement créé avec succès!';
             header("Refresh: 2; url=../club_php/club_detail.php?id=$club_id");
         } else {

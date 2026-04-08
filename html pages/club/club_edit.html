@@ -155,7 +155,7 @@
 
                     <div class="form-group" style="margin-bottom: 0;">
                         <label for="delete_confirmation_text">Tapez exactement :</label>
-                        <p class="delete-confirmation-template" style="margin-bottom: 8px;"><strong><?php echo htmlspecialchars($deleteConfirmationTemplate ?? ('supprimer le club ' . ($club_info['nom'] ?? ''))); ?></strong></p>
+                        <p class="delete-confirmation-template" style="margin-bottom: 8px;"><strong><?php echo htmlspecialchars($deleteConfirmationTemplate ?? ('supprimer ' . ($club_info['nom'] ?? ''))); ?></strong></p>
                         <input type="text" id="delete_confirmation_text" name="delete_confirmation_text" required>
                     </div>
                 </form>

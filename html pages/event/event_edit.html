@@ -113,6 +113,11 @@
                 <label for="allow_non_members" style="margin: 0;">Autoriser les non-membres du club a rejoindre cet evenement</label>
             </div>
 
+            <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                <input type="checkbox" id="is_paid_event" name="is_paid_event" value="1" style="width: auto; margin: 0;" <?php echo ((int)($event_info['is_paid_event'] ?? 0) === 1) ? 'checked' : ''; ?>>
+                <label for="is_paid_event" style="margin: 0;">Evenement payant (suivi du paiement des participants)</label>
+            </div>
+
             <button type="submit" class="btn btn-primary btn-grey-press w-100" style="margin-bottom: 15px;">Modifier</button>
 
             <p style="text-align: center;">

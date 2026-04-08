@@ -536,10 +536,10 @@
                         <label for="logs-type-filter">Type d'action</label>
                         <select id="logs-type-filter">
                             <option value="none" selected>Tous</option>
-                            <option value="demande">Demandes (validation/rejet)</option>
-                            <option value="edit">Edit (mise a jour)</option>
-                            <option value="delete">Delete (suppression)</option>
-                            <option value="kick">Kick (exclusion)</option>
+                            <option value="demande">Traitement des demandes</option>
+                            <option value="edit">Modification</option>
+                            <option value="delete">Suppression</option>
+                            <option value="kick">Exclusion</option>
                         </select>
                     </div>
                 </div>
@@ -587,11 +587,28 @@
                                     } elseif (strpos($actionType, 'kick') !== false || strpos($actionType, 'exclude') !== false || strpos($actionType, 'exclu') !== false) {
                                         $logCategory = 'kick';
                                     }
+
+                                    $actionLabel = 'Autre action';
+                                    if ($logCategory === 'demande') {
+                                        if (strpos($actionType, 'approve') !== false || strpos($actionType, 'accept') !== false || strpos($actionType, 'valide') !== false) {
+                                            $actionLabel = 'Validation de demande';
+                                        } elseif (strpos($actionType, 'reject') !== false || strpos($actionType, 'refus') !== false) {
+                                            $actionLabel = 'Rejet de demande';
+                                        } else {
+                                            $actionLabel = 'Traitement de demande';
+                                        }
+                                    } elseif ($logCategory === 'edit') {
+                                        $actionLabel = 'Modification';
+                                    } elseif ($logCategory === 'delete') {
+                                        $actionLabel = 'Suppression';
+                                    } elseif ($logCategory === 'kick') {
+                                        $actionLabel = 'Exclusion';
+                                    }
                                 ?>
                                 <tr data-club-id="<?php echo (int)($log['club_id'] ?? 0); ?>" data-responsable-id="<?php echo (int)($log['actor_user_id'] ?? 0); ?>" data-log-type="<?php echo htmlspecialchars($logCategory); ?>" data-log-ts="<?php echo (int)strtotime((string)($log['created_at'] ?? 'now')); ?>">
                                     <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime((string)($log['created_at'] ?? 'now')))); ?></td>
                                     <td><?php echo htmlspecialchars($actorName); ?></td>
-                                    <td><?php echo htmlspecialchars((string)($log['action_type'] ?? 'action')); ?></td>
+                                    <td title="<?php echo htmlspecialchars((string)($log['action_type'] ?? 'action')); ?>"><?php echo htmlspecialchars($actionLabel); ?></td>
                                     <td><?php echo htmlspecialchars($targetLabel); ?></td>
                                     <td><?php echo htmlspecialchars((string)($log['details'] ?? '-')); ?></td>
                                 </tr>

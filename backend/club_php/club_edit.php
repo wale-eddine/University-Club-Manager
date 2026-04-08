@@ -37,7 +37,7 @@ $from = $_GET['from'] ?? ($_POST['from'] ?? '');
 $isFromDashboard = ($from === 'dashboard');
 $returnUrl = $isFromDashboard ? '../dashboard.php' : ('club_detail.php?id=' . $club_id);
 $returnLabel = $isFromDashboard ? 'Retour au dashboard' : 'Retour au club';
-$deleteConfirmationTemplate = "supprimer le club " . ($club_info['nom'] ?? '');
+$deleteConfirmationTemplate = 'supprimer ' . (string)($club_info['nom'] ?? '');
 $redirectBack = (string)($_POST['redirect_back'] ?? ($_SERVER['HTTP_REFERER'] ?? ''));
 $postDeleteRedirectUrl = 'clubs.php';
 
@@ -155,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = trim((string)($_POST['delete_email'] ?? ''));
         $password = (string)($_POST['delete_password'] ?? '');
         $confirmationText = trim((string)($_POST['delete_confirmation_text'] ?? ''));
-        $expectedText = "supprimer le club " . ($club_info['nom'] ?? '');
+        $expectedText = 'supprimer ' . (string)($club_info['nom'] ?? '');
 
         $ownerStmt = $connection->prepare("SELECT id, email, mot_de_passe FROM USERS WHERE id = ?");
         $ownerStmt->execute([(int)getCurrentUserId()]);
@@ -170,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif (!password_verify($password, (string)($ownerUser['mot_de_passe'] ?? ''))) {
             $error = 'Mot de passe incorrect.';
         } elseif (strcasecmp($confirmationText, $expectedText) !== 0) {
-            $error = 'Texte de confirmation incorrect. Respectez exactement la phrase demandee.';
+            $error = 'Texte de confirmation incorrect. Saisissez exactement "supprimer" suivi du nom du club.';
         } else {
             $imagePathToDelete = $club_info['image_path'] ?? null;
             if ($club->deleteClub($club_id)) {
@@ -235,7 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $club_info['nom'] = $nom;
                 $club_info['description'] = $description;
                 $club_info['image_path'] = $imageToSave;
-                $deleteConfirmationTemplate = "supprimer le club " . ($club_info['nom'] ?? '');
+                $deleteConfirmationTemplate = 'supprimer ' . (string)($club_info['nom'] ?? '');
 
                 if ($newImagePath !== null) {
                     deleteOldClubImage($previousImagePath);

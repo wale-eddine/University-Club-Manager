@@ -49,7 +49,7 @@
     </header>
 
     <main class="container">
-        <form method="POST">
+        <form method="POST" id="register-form">
             <h2 style="text-align: center; margin-bottom: 30px;">Inscription</h2>
 
             <?php if ($error): ?>
@@ -127,30 +127,116 @@
     </footer>
     <script src="<?php echo htmlspecialchars(phpRoute('../scripts/navbar.js')); ?>"></script>
     <script>
-        const formStorageKey = 'registrationFormData';
+        const formStorageKey = 'ucm.registrationFormData.v1';
+
+        function getLocalStorageSafe() {
+            try {
+                const probeKey = '__ucm_storage_probe__';
+                localStorage.setItem(probeKey, '1');
+                localStorage.removeItem(probeKey);
+                return localStorage;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function getRegisterFields() {
+            return {
+                nom: document.getElementById('nom'),
+                prenom: document.getElementById('prenom'),
+                email: document.getElementById('email'),
+                password: document.getElementById('password'),
+                password_confirm: document.getElementById('password_confirm')
+            };
+        }
+
+        function writeFormSnapshot(storage, fields) {
+            if (!storage) {
+                return;
+            }
+
+            const data = {
+                nom: fields.nom ? fields.nom.value : '',
+                prenom: fields.prenom ? fields.prenom.value : '',
+                email: fields.email ? fields.email.value : '',
+                password: fields.password ? fields.password.value : '',
+                password_confirm: fields.password_confirm ? fields.password_confirm.value : ''
+            };
+
+            try {
+                storage.setItem(formStorageKey, JSON.stringify(data));
+            } catch (error) {
+                // Ignore storage write failures (quota/private mode restrictions).
+            }
+        }
+
+        function restoreSnapshot(storage, fields) {
+            if (!storage) {
+                return;
+            }
+
+            let raw = null;
+            try {
+                raw = storage.getItem(formStorageKey);
+            } catch (error) {
+                return;
+            }
+
+            if (!raw) {
+                return;
+            }
+
+            let data = null;
+            try {
+                data = JSON.parse(raw);
+            } catch (error) {
+                try {
+                    storage.removeItem(formStorageKey);
+                } catch (cleanupError) {
+                    // Ignore cleanup failures.
+                }
+                return;
+            }
+
+            if (!data || typeof data !== 'object') {
+                return;
+            }
+
+            // Only restore empty inputs to avoid overwriting values returned by the server after validation errors.
+            if (fields.nom && fields.nom.value === '') {
+                fields.nom.value = data.nom || '';
+            }
+            if (fields.prenom && fields.prenom.value === '') {
+                fields.prenom.value = data.prenom || '';
+            }
+            if (fields.email && fields.email.value === '') {
+                fields.email.value = data.email || '';
+            }
+            if (fields.password && fields.password.value === '') {
+                fields.password.value = data.password || '';
+            }
+            if (fields.password_confirm && fields.password_confirm.value === '') {
+                fields.password_confirm.value = data.password_confirm || '';
+            }
+        }
 
         document.addEventListener('DOMContentLoaded', function () {
-            const savedData = localStorage.getItem(formStorageKey);
-            if (savedData) {
-                const data = JSON.parse(savedData);
-                document.getElementById('nom').value = data.nom || '';
-                document.getElementById('prenom').value = data.prenom || '';
-                document.getElementById('email').value = data.email || '';
-                document.getElementById('password').value = data.password || '';
-                document.getElementById('password_confirm').value = data.password_confirm || '';
-            }
-        });
+            const storage = getLocalStorageSafe();
+            const form = document.getElementById('register-form');
+            const fields = getRegisterFields();
 
-        document.querySelectorAll('input[type="text"], input[type="email"], input[type="password"]').forEach(function (input) {
-            input.addEventListener('input', function () {
-                const data = {
-                    nom: document.getElementById('nom').value,
-                    prenom: document.getElementById('prenom').value,
-                    email: document.getElementById('email').value,
-                    password: document.getElementById('password').value,
-                    password_confirm: document.getElementById('password_confirm').value,
-                };
-                localStorage.setItem(formStorageKey, JSON.stringify(data));
+            restoreSnapshot(storage, fields);
+
+            if (!form) {
+                return;
+            }
+
+            form.addEventListener('input', function () {
+                writeFormSnapshot(storage, fields);
+            });
+
+            form.addEventListener('change', function () {
+                writeFormSnapshot(storage, fields);
             });
         });
     </script>

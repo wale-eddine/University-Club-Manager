@@ -126,6 +126,69 @@ class Database {
         }
     }
 
+    // Ensure user-child foreign keys clean up related rows when a user is deleted.
+    private function ensureUsersCascadeDeleteForeignKeys() {
+        try {
+            $targets = [
+                ['table' => 'CLUB_MEMBERS', 'column' => 'user_id', 'referenced_table' => 'USERS', 'referenced_column' => 'id'],
+                ['table' => 'MEMBERSHIP_REQUESTS', 'column' => 'user_id', 'referenced_table' => 'USERS', 'referenced_column' => 'id'],
+                ['table' => 'MEMBERSHIP_REQUEST_COOLDOWNS', 'column' => 'user_id', 'referenced_table' => 'USERS', 'referenced_column' => 'id'],
+                ['table' => 'EVENT_PARTICIPANTS', 'column' => 'user_id', 'referenced_table' => 'USERS', 'referenced_column' => 'id'],
+                ['table' => 'USER_NOTIFICATIONS', 'column' => 'user_id', 'referenced_table' => 'USERS', 'referenced_column' => 'id'],
+            ];
+
+            foreach ($targets as $target) {
+                $stmt = $this->pdo->prepare("SELECT kcu.CONSTRAINT_NAME, rc.DELETE_RULE, rc.UPDATE_RULE
+                                             FROM information_schema.KEY_COLUMN_USAGE kcu
+                                             JOIN information_schema.REFERENTIAL_CONSTRAINTS rc
+                                               ON rc.CONSTRAINT_SCHEMA = kcu.CONSTRAINT_SCHEMA
+                                              AND rc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+                                             WHERE kcu.CONSTRAINT_SCHEMA = DATABASE()
+                                               AND kcu.TABLE_NAME = ?
+                                               AND kcu.COLUMN_NAME = ?
+                                               AND kcu.REFERENCED_TABLE_NAME = ?
+                                               AND kcu.REFERENCED_COLUMN_NAME = ?
+                                             LIMIT 1");
+                $stmt->execute([
+                    $target['table'],
+                    $target['column'],
+                    $target['referenced_table'],
+                    $target['referenced_column'],
+                ]);
+
+                $fk = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$fk) {
+                    continue;
+                }
+
+                $deleteRule = strtoupper((string)($fk['DELETE_RULE'] ?? ''));
+                if ($deleteRule === 'CASCADE') {
+                    continue;
+                }
+
+                $constraintName = (string)$fk['CONSTRAINT_NAME'];
+                $updateRule = strtoupper((string)($fk['UPDATE_RULE'] ?? 'RESTRICT'));
+                $updateClause = 'RESTRICT';
+
+                if (in_array($updateRule, ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'], true)) {
+                    $updateClause = $updateRule;
+                }
+
+                $newConstraintName = strtolower('fk_' . $target['table'] . '_' . $target['column'] . '_' . $target['referenced_table']);
+                $newConstraintName = preg_replace('/[^a-z0-9_]/', '_', $newConstraintName);
+                $newConstraintName = substr($newConstraintName, 0, 60);
+
+                $this->pdo->exec("ALTER TABLE `" . $target['table'] . "` DROP FOREIGN KEY `" . $constraintName . "`");
+                $this->pdo->exec("ALTER TABLE `" . $target['table'] . "`
+                                  ADD CONSTRAINT `" . $newConstraintName . "`
+                                  FOREIGN KEY (`" . $target['column'] . "`) REFERENCES `" . $target['referenced_table'] . "`(`" . $target['referenced_column'] . "`)
+                                  ON DELETE CASCADE ON UPDATE " . $updateClause);
+            }
+        } catch (Exception $e) {
+            // Keep app running if foreign key migration fails.
+        }
+    }
+
     // Establishes and returns a PDO connection to the MySQL database.
     public function connect() {
         try {
@@ -140,6 +203,7 @@ class Database {
             $this->ensureSpecialIdColumns();
             $this->ensureClubResponsablesTable();
             $this->ensureActionLogsTable();
+            $this->ensureUsersCascadeDeleteForeignKeys();
             return $this->pdo;
         } catch (PDOException $e) {
             die('Database connection error: ' . $e->getMessage());

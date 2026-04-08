@@ -160,6 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $max_participants_raw = trim($_POST['max_participants'] ?? '');
     $max_participants = null;
     $allow_non_members = isset($_POST['allow_non_members']) ? 1 : 0;
+    $is_paid_event = isset($_POST['is_paid_event']) ? 1 : 0;
 
     if (empty($titre) || empty($description) || empty($date_debut) || empty($date_fin) || empty($lieu)) {
         $error = 'Veuillez remplir tous les champs.';
@@ -192,7 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $previousImagePath = $event_info['image_path'] ?? null;
         $imageToSave = $newImagePath ?? $previousImagePath;
 
-        if ($event->updateEvent($event_id, $titre, $description, $date_debut, $date_fin, $lieu, $imageToSave, $max_participants, $allow_non_members)) {
+        if ($event->updateEvent($event_id, $titre, $description, $date_debut, $date_fin, $lieu, $imageToSave, $max_participants, $allow_non_members, $is_paid_event)) {
             if (isResponsable()) {
                 $actionLog->logAction(
                     (int)getCurrentUserId(),
@@ -214,6 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $event_info['lieu'] = $lieu;
             $event_info['max_participants'] = $max_participants;
             $event_info['allow_non_members'] = $allow_non_members;
+            $event_info['is_paid_event'] = $is_paid_event;
             $event_info['image_path'] = $imageToSave;
 
             if ($newImagePath !== null) {

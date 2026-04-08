@@ -5,6 +5,9 @@ class Event {
     private $hasImageColumn = false;
     private $hasMaxParticipantsColumn = false;
     private $hasAllowNonMembersColumn = false;
+    private $hasIsPaidEventColumn = false;
+    private $hasParticipantPaymentStatusColumn = false;
+    private $hasParticipantPaymentDateColumn = false;
     private $hasSpecialIdColumn = false;
 
     // Check if a table exists in the current database.
@@ -96,11 +99,41 @@ class Event {
                 $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'allow_non_members'");
                 $this->hasAllowNonMembersColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
             }
+
+            $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'is_paid_event'");
+            $this->hasIsPaidEventColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+
+            if (!$this->hasIsPaidEventColumn) {
+                $this->db->exec("ALTER TABLE EVENTS ADD COLUMN is_paid_event TINYINT(1) NOT NULL DEFAULT 0 AFTER allow_non_members");
+                $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'is_paid_event'");
+                $this->hasIsPaidEventColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            }
+
+            $stmt = $this->db->query("SHOW COLUMNS FROM EVENT_PARTICIPANTS LIKE 'payment_status'");
+            $this->hasParticipantPaymentStatusColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+
+            if (!$this->hasParticipantPaymentStatusColumn) {
+                $this->db->exec("ALTER TABLE EVENT_PARTICIPANTS ADD COLUMN payment_status TINYINT(1) NOT NULL DEFAULT 0 AFTER date_inscription");
+                $stmt = $this->db->query("SHOW COLUMNS FROM EVENT_PARTICIPANTS LIKE 'payment_status'");
+                $this->hasParticipantPaymentStatusColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            }
+
+            $stmt = $this->db->query("SHOW COLUMNS FROM EVENT_PARTICIPANTS LIKE 'payment_date'");
+            $this->hasParticipantPaymentDateColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+
+            if (!$this->hasParticipantPaymentDateColumn) {
+                $this->db->exec("ALTER TABLE EVENT_PARTICIPANTS ADD COLUMN payment_date DATETIME NULL AFTER payment_status");
+                $stmt = $this->db->query("SHOW COLUMNS FROM EVENT_PARTICIPANTS LIKE 'payment_date'");
+                $this->hasParticipantPaymentDateColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            }
         } catch (Exception $e) {
             $this->hasSpecialIdColumn = false;
             $this->hasImageColumn = false;
             $this->hasMaxParticipantsColumn = false;
             $this->hasAllowNonMembersColumn = false;
+            $this->hasIsPaidEventColumn = false;
+            $this->hasParticipantPaymentStatusColumn = false;
+            $this->hasParticipantPaymentDateColumn = false;
         }
     }
 
@@ -123,7 +156,7 @@ class Event {
     }
 
     // Create a new event with optional dynamic fields.
-    public function createEvent($club_id, $titre, $description, $date_debut, $date_fin, $lieu, $image_path = null, $max_participants = null, $allow_non_members = 0) {
+    public function createEvent($club_id, $titre, $description, $date_debut, $date_fin, $lieu, $image_path = null, $max_participants = null, $allow_non_members = 0, $is_paid_event = 0) {
         $columns = ['club_id', 'titre', 'description', 'date_debut', 'date_fin', 'lieu'];
         $values = [$club_id, $titre, $description, $date_debut, $date_fin, $lieu];
 
@@ -145,6 +178,11 @@ class Event {
         if ($this->hasAllowNonMembersColumn) {
             $columns[] = 'allow_non_members';
             $values[] = (int)$allow_non_members === 1 ? 1 : 0;
+        }
+
+        if ($this->hasIsPaidEventColumn) {
+            $columns[] = 'is_paid_event';
+            $values[] = (int)$is_paid_event === 1 ? 1 : 0;
         }
 
         $placeholders = implode(', ', array_fill(0, count($columns), '?'));
@@ -207,7 +245,7 @@ class Event {
     }
 
     // Update event fields including optional schema columns.
-    public function updateEvent($id, $titre, $description, $date_debut, $date_fin, $lieu, $image_path = null, $max_participants = null, $allow_non_members = 0) {
+    public function updateEvent($id, $titre, $description, $date_debut, $date_fin, $lieu, $image_path = null, $max_participants = null, $allow_non_members = 0, $is_paid_event = 0) {
         $assignments = [
             'titre = ?',
             'description = ?',
@@ -230,6 +268,11 @@ class Event {
         if ($this->hasAllowNonMembersColumn) {
             $assignments[] = 'allow_non_members = ?';
             $values[] = (int)$allow_non_members === 1 ? 1 : 0;
+        }
+
+        if ($this->hasIsPaidEventColumn) {
+            $assignments[] = 'is_paid_event = ?';
+            $values[] = (int)$is_paid_event === 1 ? 1 : 0;
         }
 
         $values[] = $id;
@@ -409,19 +452,40 @@ class Event {
     // List event participants with membership role labels.
     public function getParticipants($event_id, $sortBy = 'date', $order = 'DESC') {
         $sortBy = strtolower((string)$sortBy);
-        if (!in_array($sortBy, ['date', 'role'], true)) {
+        if (!in_array($sortBy, ['date', 'role', 'payment_date'], true)) {
             $sortBy = 'date';
         }
 
         $orderDirection = strtoupper((string)$order) === 'ASC' ? 'ASC' : 'DESC';
         $roleOrderBy = "CASE WHEN cr.id IS NOT NULL THEN 1 WHEN cm.id IS NOT NULL THEN 2 ELSE 3 END " . $orderDirection . ", ep.date_inscription DESC, u.id DESC";
         $dateOrderBy = "ep.date_inscription " . $orderDirection . ", u.id " . $orderDirection;
-        $orderBySql = $sortBy === 'role' ? $roleOrderBy : $dateOrderBy;
+        $paymentDateOrderBy = "CASE WHEN ep.payment_date IS NULL THEN 1 ELSE 0 END ASC, ep.payment_date " . $orderDirection . ", u.id " . $orderDirection;
+        $orderBySql = $dateOrderBy;
+
+        if ($sortBy === 'role') {
+            $orderBySql = $roleOrderBy;
+        } elseif ($sortBy === 'payment_date') {
+            $orderBySql = $paymentDateOrderBy;
+        }
+        $paymentSelect = '';
+        if ($this->hasParticipantPaymentStatusColumn) {
+            $paymentSelect .= ", ep.payment_status";
+        } else {
+            $paymentSelect .= ", 0 AS payment_status";
+        }
+
+        if ($this->hasParticipantPaymentDateColumn) {
+            $paymentSelect .= ", ep.payment_date";
+        } else {
+            $paymentSelect .= ", NULL AS payment_date";
+        }
+
         $stmt = $this->db->prepare("SELECT u.id,
                                            u.nom,
                                            u.prenom,
                                            u.email,
                                            ep.date_inscription,
+                                           " . ltrim($paymentSelect, ', ') . ",
                                            CASE
                                                WHEN cr.id IS NOT NULL THEN 'Responsable'
                                                WHEN cm.id IS NOT NULL THEN 'Membre'
@@ -438,6 +502,33 @@ class Event {
                                     ORDER BY " . $orderBySql);
         $stmt->execute([$event_id]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Mark a participant as paid/unpaid for one event.
+    public function setParticipantPaymentStatus($event_id, $user_id, $isPaid) {
+        if (!$this->hasParticipantPaymentStatusColumn || !$this->hasParticipantPaymentDateColumn) {
+            return false;
+        }
+
+        $event_id = (int)$event_id;
+        $user_id = (int)$user_id;
+        if ($event_id <= 0 || $user_id <= 0) {
+            return false;
+        }
+
+        if ((int)$isPaid === 1) {
+            $stmt = $this->db->prepare("UPDATE EVENT_PARTICIPANTS
+                                        SET payment_status = 1,
+                                            payment_date = NOW()
+                                        WHERE event_id = ? AND user_id = ?");
+            return $stmt->execute([$event_id, $user_id]);
+        }
+
+        $stmt = $this->db->prepare("UPDATE EVENT_PARTICIPANTS
+                                    SET payment_status = 0,
+                                        payment_date = NULL
+                                    WHERE event_id = ? AND user_id = ?");
+        return $stmt->execute([$event_id, $user_id]);
     }
 
     // List events linked to user as participant or owner.

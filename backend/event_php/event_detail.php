@@ -45,7 +45,7 @@ if (!$event_info) {
 }
 
 $participantSortBy = strtolower((string)($_GET['participant_sort_by'] ?? 'date'));
-if (!in_array($participantSortBy, ['date', 'role'], true)) {
+if (!in_array($participantSortBy, ['date', 'role', 'payment_date'], true)) {
     $participantSortBy = 'date';
 }
 
@@ -67,6 +67,12 @@ $participantRoleSortParams['participant_order'] = ($participantSortBy === 'role'
 $participantRoleSortUrl = '?' . http_build_query($participantRoleSortParams);
 $participantRoleSortIndicator = $participantSortBy === 'role' ? ($participantSortOrder === 'asc' ? '&uarr;' : '&darr;') : '';
 
+$participantPaymentDateSortParams = $_GET;
+$participantPaymentDateSortParams['participant_sort_by'] = 'payment_date';
+$participantPaymentDateSortParams['participant_order'] = ($participantSortBy === 'payment_date' && $participantSortOrder === 'asc') ? 'desc' : 'asc';
+$participantPaymentDateSortUrl = '?' . http_build_query($participantPaymentDateSortParams);
+$participantPaymentDateSortIndicator = $participantSortBy === 'payment_date' ? ($participantSortOrder === 'asc' ? '&uarr;' : '&darr;') : '';
+
 $participants = $event->getParticipants($event_id, $participantSortBy, $participantSortOrder);
 $is_participant = isLoggedIn() ? $event->isParticipant($event_id, getCurrentUserId()) : false;
 $is_club_owner = isLoggedIn() && canManageClubById((int)$event_info['club_id']);
@@ -75,6 +81,7 @@ $is_club_member = isLoggedIn() ? $club->isMember((int)$event_info['club_id'], ge
 $has_pending_club_request = isLoggedIn() ? $membership->hasRequest((int)$event_info['club_id'], getCurrentUserId()) : false;
 $club_join_cooldown_seconds = isLoggedIn() ? $membership->getRequestCooldownSeconds((int)$event_info['club_id'], getCurrentUserId()) : 0;
 $allows_non_members = (int)($event_info['allow_non_members'] ?? 0) === 1;
+$is_paid_event = (int)($event_info['is_paid_event'] ?? 0) === 1;
 
 // Build a contextual return link based on navigation source.
 $returnUrl = 'events.php';
@@ -134,16 +141,20 @@ function isAjaxRequest() {
 }
 
 // Send normalized JSON response and stop execution.
-function respondJson($success, $message, $removedCount = 0) {
+function respondJson($success, $message, $removedCount = 0, $payload = []) {
     while (ob_get_level() > 0) {
         ob_end_clean();
     }
     header('Content-Type: application/json; charset=UTF-8');
-    echo json_encode([
+    $base = [
         'success' => (bool)$success,
         'message' => (string)$message,
         'removed_count' => (int)$removedCount
-    ]);
+    ];
+    if (!is_array($payload)) {
+        $payload = [];
+    }
+    echo json_encode(array_merge($base, $payload));
     exit();
 }
 
@@ -293,6 +304,47 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     respondJson(true, $message, $removedCount);
                 }
                 respondJson(false, $error !== '' ? $error : 'Impossible de retirer les participants selectionnes.', 0);
+            }
+        } elseif ($_POST['action'] === 'set_payment_status' && $can_manage_event) {
+            $target_user_id = isset($_POST['user_id']) ? (int)$_POST['user_id'] : 0;
+            $paidValue = isset($_POST['paid']) ? (int)$_POST['paid'] : -1;
+            $paymentPayload = [];
+
+            if (!$is_paid_event) {
+                $error = 'Le suivi de paiement est desactive pour cet evenement.';
+            } elseif ($target_user_id <= 0 || !in_array($paidValue, [0, 1], true)) {
+                $error = 'Mise a jour du paiement invalide.';
+            } elseif ($club->isResponsible((int)$event_info['club_id'], $target_user_id)) {
+                $error = 'Le statut de paiement ne peut pas etre modifie pour un responsable.';
+            } elseif (!$event->isParticipant($event_id, $target_user_id)) {
+                $error = 'Cet utilisateur n est pas inscrit a cet evenement.';
+            } elseif ($event->setParticipantPaymentStatus($event_id, $target_user_id, $paidValue)) {
+                $message = $paidValue === 1
+                    ? 'Participant marque comme paye.'
+                    : 'Paiement annule pour ce participant.';
+
+                $updatedParticipants = $event->getParticipants($event_id, 'date', 'desc');
+                foreach ($updatedParticipants as $participant) {
+                    if ((int)($participant['id'] ?? 0) === $target_user_id) {
+                        $paymentDateRaw = (string)($participant['payment_date'] ?? '');
+                        $paymentPayload = [
+                            'user_id' => $target_user_id,
+                            'paid' => (int)($participant['payment_status'] ?? 0) === 1,
+                            'payment_date' => $paymentDateRaw,
+                            'payment_date_display' => $paymentDateRaw !== '' ? date('d/m/Y H:i', strtotime($paymentDateRaw)) : '-',
+                        ];
+                        break;
+                    }
+                }
+            } else {
+                $error = 'Impossible de mettre a jour le statut de paiement.';
+            }
+
+            if (isAjaxRequest()) {
+                if ($error !== '') {
+                    respondJson(false, $error, 0);
+                }
+                respondJson(true, $message, 0, $paymentPayload);
             }
         // Handle single participant removal by event owner.
         } elseif ($_POST['action'] === 'remove_participant' && $can_manage_event) {
