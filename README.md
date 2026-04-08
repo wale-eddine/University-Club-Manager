@@ -18,8 +18,10 @@ Le projet couvre le cycle principal d'un club universitaire:
 - Verification d'email obligatoire apres inscription (activation de compte).
 - Renvoi de l'email de verification depuis la page de connexion.
 - Recuperation de mot de passe par email (lien de reinitialisation).
+- Limitation des demandes de reset mot de passe: 1 envoi par email toutes les 30 minutes.
 - Reinitialisation du mot de passe via lien securise a duree limitee.
 - Connexion avec Google (OAuth 2.0 serveur).
+- Premiere connexion Google (nouvel email): definition d'un mot de passe avec confirmation.
 - Consultation des clubs et evenements.
 - Demande d'adhesion a un club.
 - Quitter un club.
@@ -37,6 +39,7 @@ Le projet couvre le cycle principal d'un club universitaire:
 - Gestion des clubs dont il est responsable (multi-clubs supportes).
 - Validation/rejet des demandes d'adhesion sur ses clubs.
 - Gestion des participants et des evenements de ses clubs.
+- Gestion des paiements participants pour les evenements payants (paye/non paye + date de paiement).
 
 `etudiant`
 - Consultation des clubs/evenements.
@@ -96,7 +99,8 @@ University-Club-Manager/
 │       ├── verify_email.php
 │       ├── verification_sent.php
 │       ├── google_login.php
-│       └── google_callback.php
+│       ├── google_callback.php
+│       └── google_set_password.php
 ├── classes/
 │   ├── ActionLog.php
 │   ├── Club.php
@@ -114,7 +118,7 @@ University-Club-Manager/
 │   ├── google_oauth_client.json (local, ignore git)
 │   └── mail_credentials.php (local, ignore git)
 ├── database/
-│   └── schema.sql
+│   ├── schema.sql
 ├── html pages/
 │   ├── index.html
 │   ├── dashboard.html
@@ -357,6 +361,13 @@ ALTER TABLE USERS ADD COLUMN avatar_url VARCHAR(255) NULL AFTER google_id;
 
 - Demarrage OAuth: `backend/profile_php/google_login.php`
 - Callback OAuth: `backend/profile_php/google_callback.php`
+- Finalisation premiere connexion Google (mot de passe): `backend/profile_php/google_set_password.php`
+
+Comportement actuel:
+
+- Si l'email Google existe deja: liaison/connexion directe.
+- Si l'email Google est nouveau: redirection vers un ecran de creation de mot de passe + confirmation.
+- Les comptes connectes via Google sont marques verifies (`email_verified_at`) automatiquement.
 
 Assurez-vous que l'URI de callback configuree dans Google Cloud correspond exactement a votre URL reelle.
 
@@ -383,13 +394,27 @@ Assurez-vous que l'URI de callback configuree dans Google Cloud correspond exact
 
 1. L'utilisateur ouvre `Mot de passe oublie`.
 2. Le systeme genere un token de reset (1h) et envoie un email.
-3. L'utilisateur clique le lien, definit un nouveau mot de passe.
-4. Apres succes, redirection vers `login.php` avec message de confirmation.
+3. Une meme adresse email ne peut recevoir un nouveau lien qu'une fois toutes les 30 minutes.
+4. L'utilisateur clique le lien, definit un nouveau mot de passe.
+5. Apres succes, redirection vers `login.php` avec message de confirmation.
 
 ### Routes principales
 
 - Demande reset: `backend/profile_php/forgot_password.php`
 - Reset via token: `backend/profile_php/reset_password.php`
+
+## Evenements payants
+
+Le module evenement supporte un mode optionnel "evenement payant":
+
+- Creation/modification: case a cocher "Evenement payant".
+- Details evenement (`Participants`):
+	- visible pour `admin` et `responsable` gerant le club,
+	- statut par participant: `Paye` / `Non paye`,
+	- date de paiement,
+	- clic direct sur le statut pour basculer sans rechargement de page (AJAX),
+	- si passage a `Non paye`, la date de paiement est videe,
+	- tri possible sur la colonne `Date de paiement`.
 
 ## Configuration email SMTP (Gmail)
 
