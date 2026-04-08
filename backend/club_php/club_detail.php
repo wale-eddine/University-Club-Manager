@@ -10,6 +10,7 @@ require_once('../../config/Database.php');
 require_once('../../classes/Club.php');
 require_once('../../classes/Event.php');
 require_once('../../classes/MembershipRequest.php');
+require_once('../../classes/ActionLog.php');
 
 // Authentication check - redirect if not logged in
 if (!isLoggedIn()) {
@@ -36,6 +37,7 @@ $connection = $db->getConnection();
 $club = new Club($connection);
 $event = new Event($connection);
 $membership = new MembershipRequest($connection);
+$actionLog = new ActionLog($connection);
 
 $club_info = $club->getClubById($club_id);
 
@@ -259,6 +261,19 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 if ($removedCount > 0) {
+                    if (isResponsable()) {
+                        $actionLog->logAction(
+                            (int)getCurrentUserId(),
+                            'responsable',
+                            'kick_members',
+                            'club_member',
+                            null,
+                            (string)($club_info['nom'] ?? ('Club #' . (int)$club_id)),
+                            (int)$club_id,
+                            null,
+                            $removedCount . ' membre(s) exclus du club.'
+                        );
+                    }
                     $message = $removedCount === 1
                         ? '1 membre exclu du club.'
                         : $removedCount . ' membres exclus du club.';
@@ -294,6 +309,19 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif (!$club->isMember($club_id, $target_user_id)) {
                 $error = 'Cet utilisateur n\'est pas membre du club.';
             } elseif ($club->removeMemberWithEventSubscriptions($club_id, $target_user_id)) {
+                if (isResponsable()) {
+                    $actionLog->logAction(
+                        (int)getCurrentUserId(),
+                        'responsable',
+                        'kick_member',
+                        'club_member',
+                        (int)$target_user_id,
+                        (string)($club_info['nom'] ?? ('Club #' . (int)$club_id)),
+                        (int)$club_id,
+                        null,
+                        'Exclusion d\'un membre du club (user_id=' . (int)$target_user_id . ').'
+                    );
+                }
                 $message = 'Membre exclu du club.';
 
                 $event->createUserNotification(
@@ -322,6 +350,19 @@ if (isLoggedIn() && $_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$event_info || (int)$event_info['club_id'] !== $club_id) {
                 $error = 'Événement invalide.';
             } elseif ($event->deleteEvent($event_id)) {
+                if (isResponsable()) {
+                    $actionLog->logAction(
+                        (int)getCurrentUserId(),
+                        'responsable',
+                        'delete_event',
+                        'event',
+                        (int)$event_id,
+                        (string)($event_info['titre'] ?? ('Evenement #' . (int)$event_id)),
+                        (int)$club_id,
+                        (int)$event_id,
+                        'Suppression de l\'evenement depuis la fiche club.'
+                    );
+                }
                 $message = 'Événement supprimé.';
             } else {
                 $error = 'Impossible de supprimer cet événement.';

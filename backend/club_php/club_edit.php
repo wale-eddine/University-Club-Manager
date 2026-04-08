@@ -3,6 +3,7 @@
 require_once('../../classes/session.php');
 require_once('../../config/Database.php');
 require_once('../../classes/Club.php');
+require_once('../../classes/ActionLog.php');
 
 // Require authentication before editing clubs.
 redirectIfNotLoggedIn();
@@ -19,6 +20,7 @@ if ($club_id === 0) {
 $db = new Database();
 $connection = $db->getConnection();
 $club = new Club($connection);
+$actionLog = new ActionLog($connection);
 
 $club_info = $club->getClubById($club_id);
 
@@ -172,6 +174,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $imagePathToDelete = $club_info['image_path'] ?? null;
             if ($club->deleteClub($club_id)) {
+                if (isResponsable()) {
+                    $actionLog->logAction(
+                        (int)getCurrentUserId(),
+                        'responsable',
+                        'delete_club',
+                        'club',
+                        (int)$club_id,
+                        (string)($club_info['nom'] ?? ('Club #' . (int)$club_id)),
+                        (int)$club_id,
+                        null,
+                        'Suppression du club depuis la page de modification.'
+                    );
+                }
                 deleteOldClubImage($imagePathToDelete);
                 $clubDeleted = true;
                 $success = 'Club supprimé avec succès! Redirection en cours...';
@@ -203,6 +218,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $imageToSave = $newImagePath ?? $previousImagePath;
 
             if ($club->updateClubWithImage($club_id, $nom, $description, $imageToSave)) {
+                if (isResponsable()) {
+                    $actionLog->logAction(
+                        (int)getCurrentUserId(),
+                        'responsable',
+                        'edit_club',
+                        'club',
+                        (int)$club_id,
+                        (string)($nom !== '' ? $nom : ('Club #' . (int)$club_id)),
+                        (int)$club_id,
+                        null,
+                        'Modification du club (nom/description/image).'
+                    );
+                }
                 $success = 'Club modifié avec succès!';
                 $club_info['nom'] = $nom;
                 $club_info['description'] = $description;

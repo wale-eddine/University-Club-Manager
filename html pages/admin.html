@@ -291,7 +291,6 @@
                         <option value="none" selected>Aucun</option>
                         <option value="etudiant">Étudiant</option>
                         <option value="responsable">Responsable</option>
-                        <option value="admin">Admin</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -500,6 +499,58 @@
                 </form>
             </div>
         </div>
+
+        <div class="dashboard-section">
+            <h3>Journal des actions des responsables</h3>
+            <p class="admin-section-note">Affiche les dernieres actions effectuees par les responsables (modification/suppression de club ou evenement, exclusion de membres).</p>
+
+            <?php
+                $responsableLogs = array_values(array_filter($actionLogs ?? [], function ($logItem) {
+                    return (string)($logItem['actor_role'] ?? '') === 'responsable';
+                }));
+            ?>
+
+            <?php if (empty($responsableLogs)): ?>
+                <p class="admin-section-note">Aucune action de responsable enregistree pour le moment.</p>
+            <?php else: ?>
+                <div class="admin-table-wrap">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Responsable</th>
+                                <th>Action</th>
+                                <th>Cible</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($responsableLogs as $log): ?>
+                                <?php
+                                    $actorName = trim((string)($log['actor_prenom'] ?? '') . ' ' . (string)($log['actor_nom'] ?? ''));
+                                    if ($actorName === '') {
+                                        $actorName = (string)($log['actor_email'] ?? 'Responsable inconnu');
+                                    }
+                                    $targetLabel = trim((string)($log['target_label'] ?? ''));
+                                    if ($targetLabel === '') {
+                                        $targetType = (string)($log['target_type'] ?? 'cible');
+                                        $targetId = (int)($log['target_id'] ?? 0);
+                                        $targetLabel = $targetId > 0 ? ($targetType . ' #' . $targetId) : $targetType;
+                                    }
+                                ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime((string)($log['created_at'] ?? 'now')))); ?></td>
+                                    <td><?php echo htmlspecialchars($actorName); ?></td>
+                                    <td><?php echo htmlspecialchars((string)($log['action_type'] ?? 'action')); ?></td>
+                                    <td><?php echo htmlspecialchars($targetLabel); ?></td>
+                                    <td><?php echo htmlspecialchars((string)($log['details'] ?? '-')); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
     </main>
 
     <footer>
@@ -583,6 +634,36 @@
 
             function showUserSaveButtonForForm(formId) {
                 hideAllUserSaveButtons();
+                const button = document.querySelector('.user-save-btn[form="' + formId + '"]');
+                if (button) {
+                    button.classList.add('is-visible');
+                }
+            }
+
+            function getUserFormTrackedFields(formId) {
+                return Array.from(document.querySelectorAll('#users-admin-table [form="' + formId + '"]'));
+            }
+
+            function captureUserFormSnapshot(formId) {
+                getUserFormTrackedFields(formId).forEach(function (field) {
+                    field.dataset.initialValue = field.value || '';
+                });
+            }
+
+            function isUserFormDirty(formId) {
+                return getUserFormTrackedFields(formId).some(function (field) {
+                    const initialValue = field.dataset.initialValue || '';
+                    const currentValue = field.value || '';
+                    return currentValue !== initialValue;
+                });
+            }
+
+            function updateUserSaveButtonForForm(formId) {
+                hideAllUserSaveButtons();
+                if (!isUserFormDirty(formId)) {
+                    return;
+                }
+
                 const button = document.querySelector('.user-save-btn[form="' + formId + '"]');
                 if (button) {
                     button.classList.add('is-visible');
@@ -703,8 +784,12 @@
 
                 const eventName = field.tagName === 'SELECT' ? 'change' : 'input';
                 field.addEventListener(eventName, function () {
-                    showUserSaveButtonForForm(formId);
+                    updateUserSaveButtonForForm(formId);
                 });
+            });
+
+            document.querySelectorAll('form[id^="user-form-"]').forEach(function (formElement) {
+                captureUserFormSnapshot(formElement.id);
             });
 
             // Submit user updates without page refresh.
@@ -715,6 +800,7 @@
                     postAdminFormAjax(formElement, usersSectionFeedback, function (data) {
                         applyUpdatedUserRow(data && data.updated_user ? data.updated_user : null);
                         applyAdminSyncPayload(data && data.sync ? data.sync : null);
+                        captureUserFormSnapshot(formElement.id);
                         hideAllUserSaveButtons();
                         applyFilters();
                     });
@@ -734,22 +820,61 @@
                 const responsableValue = (clubResponsableFilter && clubResponsableFilter.value) ? clubResponsableFilter.value : 'none';
                 const hasCriteria = clubValue !== 'none' || responsableValue !== 'none';
 
+                function updateClubsEmptyStateMessage() {
+                    if (!clubsEmptyState) {
+                        return;
+                    }
+
+                    if (!hasCriteria) {
+                        clubsEmptyState.textContent = 'Aucun filtre applique. Selectionnez un club et/ou un responsable pour afficher la table.';
+                        return;
+                    }
+
+                    if (responsableValue !== 'none' && clubValue === 'none') {
+                        clubsEmptyState.textContent = 'Ce responsable n\'est responsable d\'aucun club.';
+                        return;
+                    }
+
+                    if (responsableValue !== 'none' && clubValue !== 'none') {
+                        clubsEmptyState.textContent = 'Le responsable selectionne n\'est pas assigne a ce club.';
+                        return;
+                    }
+
+                    clubsEmptyState.textContent = 'Aucun club ne correspond au filtre selectionne.';
+                }
+
                 if (!hasCriteria) {
                     if (clubsTableWrap) clubsTableWrap.style.display = 'none';
                     if (clubsEmptyState) clubsEmptyState.style.display = '';
+                    updateClubsEmptyStateMessage();
                     return;
                 }
 
                 if (clubsTableWrap) clubsTableWrap.style.display = '';
                 if (clubsEmptyState) clubsEmptyState.style.display = 'none';
 
+                let visibleCount = 0;
+
                 clubsRows.forEach(function (row) {
                     const rowClubId = row.getAttribute('data-club-id') || '';
                     const rowResponsableIds = row.getAttribute('data-responsable-ids') || ',,';
                     const matchesClub = clubValue === 'none' || rowClubId === clubValue;
                     const matchesResponsable = responsableValue === 'none' || rowResponsableIds.indexOf(',' + responsableValue + ',') !== -1;
-                    row.style.display = matchesClub && matchesResponsable ? '' : 'none';
+                    const isVisible = matchesClub && matchesResponsable;
+                    row.style.display = isVisible ? '' : 'none';
+                    if (isVisible) {
+                        visibleCount++;
+                    }
                 });
+
+                if (visibleCount === 0) {
+                    if (clubsTableWrap) clubsTableWrap.style.display = 'none';
+                    if (clubsEmptyState) clubsEmptyState.style.display = '';
+                    updateClubsEmptyStateMessage();
+                } else {
+                    if (clubsTableWrap) clubsTableWrap.style.display = '';
+                    if (clubsEmptyState) clubsEmptyState.style.display = 'none';
+                }
             }
 
             function refreshClubResponsableFilterOptions() {
@@ -1259,6 +1384,7 @@
             statusSelects.forEach(function (select) {
                 function syncReasonRequirement() {
                     const userId = select.getAttribute('data-user-id');
+                    const formId = select.getAttribute('form') || '';
                     const reasonInput = document.querySelector('.js-inactive-reason[data-user-id="' + userId + '"]');
                     if (!reasonInput) {
                         return;
@@ -1270,6 +1396,10 @@
                         reasonInput.required = false;
                         reasonInput.value = '';
                         reasonInput.classList.add('is-hidden');
+                    }
+
+                    if (formId !== '') {
+                        updateUserSaveButtonForForm(formId);
                     }
                 }
 

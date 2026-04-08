@@ -98,6 +98,7 @@ University-Club-Manager/
 │       ├── google_login.php
 │       └── google_callback.php
 ├── classes/
+│   ├── ActionLog.php
 │   ├── Club.php
 │   ├── Event.php
 │   ├── MembershipRequest.php
@@ -173,6 +174,7 @@ Le schema `database/schema.sql` contient notamment:
 - `EVENT_PARTICIPANTS`
 - `EVENT_REJOIN_COOLDOWNS`
 - `USER_NOTIFICATIONS`
+- `ACTION_LOGS`
 - `PASSWORD_RESET_TOKENS`
 - `EMAIL_VERIFICATION_TOKENS`
 
@@ -247,6 +249,7 @@ Le projet inclut maintenant une page reservee aux comptes `admin`:
 - Ajout direct d'un utilisateur (`etudiant` ou `responsable`) dans un club sans validation du responsable.
 - Actions AJAX sans rechargement complet avec synchronisation des sections.
 - Recherche/filtres dynamiques sur les tableaux utilisateurs et responsables.
+- Journal des actions des responsables (suppression/modification club-evenement, gestion des membres, validation/rejet de demandes).
 
 Acces depuis le dashboard admin ou directement via `backend/admin.php`.
 

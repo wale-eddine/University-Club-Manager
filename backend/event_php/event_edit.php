@@ -3,6 +3,7 @@
 require_once('../../classes/session.php');
 require_once('../../config/Database.php');
 require_once('../../classes/Event.php');
+require_once('../../classes/ActionLog.php');
 
 // Require authentication before editing events.
 redirectIfNotLoggedIn();
@@ -19,6 +20,7 @@ if ($event_id === 0) {
 $db = new Database();
 $connection = $db->getConnection();
 $event = new Event($connection);
+$actionLog = new ActionLog($connection);
 
 $event_info = $event->getEventById($event_id);
 
@@ -122,6 +124,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'delete_event') {
         $previousImagePath = $event_info['image_path'] ?? null;
         if ($event->deleteEvent($event_id)) {
+            if (isResponsable()) {
+                $actionLog->logAction(
+                    (int)getCurrentUserId(),
+                    'responsable',
+                    'delete_event',
+                    'event',
+                    (int)$event_id,
+                    (string)($event_info['titre'] ?? ('Evenement #' . (int)$event_id)),
+                    (int)($event_info['club_id'] ?? 0),
+                    (int)$event_id,
+                    'Suppression de l\'evenement depuis la page de modification.'
+                );
+            }
             deleteOldEventImage($previousImagePath);
             header('Location: ' . $deleteReturnUrl);
             exit();
@@ -178,6 +193,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $imageToSave = $newImagePath ?? $previousImagePath;
 
         if ($event->updateEvent($event_id, $titre, $description, $date_debut, $date_fin, $lieu, $imageToSave, $max_participants, $allow_non_members)) {
+            if (isResponsable()) {
+                $actionLog->logAction(
+                    (int)getCurrentUserId(),
+                    'responsable',
+                    'edit_event',
+                    'event',
+                    (int)$event_id,
+                    (string)($titre !== '' ? $titre : ('Evenement #' . (int)$event_id)),
+                    (int)($event_info['club_id'] ?? 0),
+                    (int)$event_id,
+                    'Modification de l\'evenement (titre/details/date/lieu/image/limite).'
+                );
+            }
             $success = 'Evenement modifie avec succes!';
             $event_info['titre'] = $titre;
             $event_info['description'] = $description;

@@ -99,6 +99,33 @@ class Database {
         }
     }
 
+    // Create activity log table used by admin monitoring.
+    private function ensureActionLogsTable() {
+        try {
+            $this->pdo->exec("CREATE TABLE IF NOT EXISTS ACTION_LOGS (
+                                id INT PRIMARY KEY AUTO_INCREMENT,
+                                actor_user_id INT NULL,
+                                actor_role VARCHAR(30) NOT NULL,
+                                action_type VARCHAR(80) NOT NULL,
+                                target_type VARCHAR(40) NOT NULL,
+                                target_id INT NULL,
+                                target_label VARCHAR(255) NULL,
+                                club_id INT NULL,
+                                event_id INT NULL,
+                                details TEXT NULL,
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                INDEX idx_action_logs_created_at (created_at),
+                                INDEX idx_action_logs_actor_role (actor_role),
+                                INDEX idx_action_logs_actor_user_id (actor_user_id),
+                                INDEX idx_action_logs_club_id (club_id),
+                                INDEX idx_action_logs_event_id (event_id),
+                                CONSTRAINT fk_action_logs_actor_user FOREIGN KEY (actor_user_id) REFERENCES USERS(id) ON DELETE SET NULL
+                            )");
+        } catch (Exception $e) {
+            // Keep app running if log table migration fails.
+        }
+    }
+
     // Establishes and returns a PDO connection to the MySQL database.
     public function connect() {
         try {
@@ -112,6 +139,7 @@ class Database {
             $this->ensureUsersManagementColumns();
             $this->ensureSpecialIdColumns();
             $this->ensureClubResponsablesTable();
+            $this->ensureActionLogsTable();
             return $this->pdo;
         } catch (PDOException $e) {
             die('Database connection error: ' . $e->getMessage());

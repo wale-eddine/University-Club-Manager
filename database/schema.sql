@@ -112,6 +112,26 @@ CREATE TABLE USER_NOTIFICATIONS (
     FOREIGN KEY (user_id) REFERENCES USERS(id)
 );
 
+CREATE TABLE ACTION_LOGS (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    actor_user_id INT NULL,
+    actor_role VARCHAR(30) NOT NULL,
+    action_type VARCHAR(80) NOT NULL,
+    target_type VARCHAR(40) NOT NULL,
+    target_id INT NULL,
+    target_label VARCHAR(255) NULL,
+    club_id INT NULL,
+    event_id INT NULL,
+    details TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_action_logs_created_at (created_at),
+    INDEX idx_action_logs_actor_role (actor_role),
+    INDEX idx_action_logs_actor_user_id (actor_user_id),
+    INDEX idx_action_logs_club_id (club_id),
+    INDEX idx_action_logs_event_id (event_id),
+    CONSTRAINT fk_action_logs_actor_user FOREIGN KEY (actor_user_id) REFERENCES USERS(id) ON DELETE SET NULL
+);
+
 CREATE TABLE PASSWORD_RESET_TOKENS (
     id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NOT NULL,

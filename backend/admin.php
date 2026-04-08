@@ -4,6 +4,7 @@ require_once('../classes/session.php');
 require_once('../config/Database.php');
 require_once('../classes/User.php');
 require_once('../classes/Club.php');
+require_once('../classes/ActionLog.php');
 
 // Block access for non-admin users.
 redirectIfNotLoggedIn();
@@ -17,6 +18,7 @@ $db = new Database();
 $connection = $db->getConnection();
 $userModel = new User($connection);
 $clubModel = new Club($connection);
+$actionLogModel = new ActionLog($connection);
 
 $success = $_SESSION['admin_flash_success'] ?? '';
 $error = $_SESSION['admin_flash_error'] ?? '';
@@ -501,6 +503,7 @@ $clubs = $syncData['clubs'];
 $clubResponsablesMap = $syncData['clubResponsablesMap'];
 $responsableUsersJson = json_encode($syncData['responsableUsersPayload'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 $directStudentsJson = json_encode($syncData['directStudentsPayload'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+$actionLogs = $actionLogModel->getRecentLogs(200);
 
 // Render admin dashboard view.
 include('../html pages/admin.html');
