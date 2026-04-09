@@ -394,4 +394,113 @@
         min-width: 100%;
         width: 100%;
     }
+
+    /* Admin panel responsive styles for mobile */
+    .admin-toolbar {
+        grid-template-columns: 1fr !important;
+    }
+
+    .admin-toolbar.two-col {
+        grid-template-columns: 1fr !important;
+    }
+
+    .admin-toolbar.three-col {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Enable horizontal scroll for admin tables on mobile */
+    .admin-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-table {
+        min-width: 800px;
+        font-size: 13px;
+    }
+
+    .admin-table td,
+    .admin-table th {
+        padding: 8px 10px;
+    }
+
+    .admin-table .row-actions {
+        min-width: 180px;
+    }
+
+    .admin-actions {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .admin-actions .btn {
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+
+    .admin-badge {
+        font-size: 10px;
+        padding: 4px 8px;
+    }
+
+    .dashboard-section {
+        padding: 16px;
+    }
+
+    .dashboard-section h3 {
+        font-size: 1.2rem;
+        margin-bottom: 12px;
+    }
+
+    .admin-section-note {
+        font-size: 0.9rem;
+        margin-bottom: 12px;
+    }
+
+    /* Adjust user table column widths for mobile */
+    #users-admin-table th:nth-child(1),
+    #users-admin-table td:nth-child(1) { width: 50px; }
+    #users-admin-table th:nth-child(2),
+    #users-admin-table td:nth-child(2) { width: 100px; }
+    #users-admin-table th:nth-child(3),
+    #users-admin-table td:nth-child(3) { width: 100px; }
+    #users-admin-table th:nth-child(4),
+    #users-admin-table td:nth-child(4) { width: 140px; }
+    #users-admin-table th:nth-child(5),
+    #users-admin-table td:nth-child(5) { width: 90px; }
+    #users-admin-table th:nth-child(6),
+    #users-admin-table td:nth-child(6) { width: 140px; }
+    #users-admin-table th:nth-child(7),
+    #users-admin-table td:nth-child(7) { width: 160px; }
+
+    .admin-input-stack {
+        font-size: 12px !important;
+    }
+
+    .direct-user-picker input {
+        width: 100%;
+    }
+
+    .direct-user-options {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    /* Hide some columns or adjust visibility for very small screens */
+    @media (max-width: 480px) {
+        .admin-table {
+            min-width: 700px;
+            font-size: 12px;
+        }
+
+        .admin-table td,
+        .admin-table th {
+            padding: 6px 8px;
+        }
+
+        .admin-badge {
+            font-size: 9px;
+            padding: 3px 6px;
+        }
+    }
 }

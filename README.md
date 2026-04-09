@@ -53,6 +53,7 @@ Le projet couvre le cycle principal d'un club universitaire:
 - Tri exclusif par colonne sur les tableaux de details des clubs et evenements: role ou date d'adhesion/inscription, avec ordre ascendant/descendant.
 - Affichage des roles avec badges coherents dans les tableaux de details.
 - Carousel d'accueil avec navigation et defilement auto.
+- Panneau admin adapte mobile: tableaux scrollables horizontalement et barres de filtres empilees sur petit ecran.
 
 ## Stack technique
 
@@ -249,7 +250,9 @@ Le projet inclut maintenant une page reservee aux comptes `admin`:
 - Colonnes separees pour prenom et nom dans le tableau utilisateurs.
 - Changement de role entre `etudiant` et `responsable`.
 - Activation/desactivation de compte avec raison obligatoire en mode inactif.
+- Les comptes `admin` sont visibles mais non modifiables depuis le tableau utilisateurs.
 - Attribution ou retrait d'un responsable sur un club (multi-responsables).
+- Dans `Responsables actuels`, les comptes `admin` ne sont pas affiches.
 - Ajout direct d'un utilisateur (`etudiant` ou `responsable`) dans un club sans validation du responsable.
 - Actions AJAX sans rechargement complet avec synchronisation des sections.
 - Recherche/filtres dynamiques sur les tableaux utilisateurs et responsables.

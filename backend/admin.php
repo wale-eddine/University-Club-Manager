@@ -192,7 +192,12 @@ function buildAdminSyncPayload($userModel, $clubModel, $currentUserId) {
     foreach ($clubs as $clubItem) {
         $clubId = (int)($clubItem['id'] ?? 0);
         if ($clubId > 0) {
-            $clubResponsablesMap[$clubId] = $clubModel->getClubResponsables($clubId);
+            $responsables = $clubModel->getClubResponsables($clubId);
+            // Admins are never shown in "Responsables actuels".
+            $responsables = array_values(array_filter($responsables, function ($resp) {
+                return ($resp['role'] ?? '') !== 'admin';
+            }));
+            $clubResponsablesMap[$clubId] = $responsables;
         }
     }
 
@@ -393,10 +398,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($clubModel->addClubResponsable($clubId, $responsibleId)) {
             if (isAdminAjaxRequest()) {
+                $clubResponsables = array_values(array_filter($clubModel->getClubResponsables($clubId), function ($resp) {
+                    return ($resp['role'] ?? '') !== 'admin';
+                }));
                 adminJsonResponse(true, 'Responsable ajouté au club avec succès.', [
                     'action' => $action,
                     'club_id' => $clubId,
-                    'club_responsables' => $clubModel->getClubResponsables($clubId),
+                    'club_responsables' => $clubResponsables,
                 ]);
             }
             adminRedirect('Responsable ajouté au club avec succès.', '');
@@ -424,10 +432,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($clubModel->removeClubResponsable($clubId, $responsibleId, $currentUserId)) {
             if (isAdminAjaxRequest()) {
+                $clubResponsables = array_values(array_filter($clubModel->getClubResponsables($clubId), function ($resp) {
+                    return ($resp['role'] ?? '') !== 'admin';
+                }));
                 adminJsonResponse(true, 'Responsable retiré du club avec succès.', [
                     'action' => $action,
                     'club_id' => $clubId,
-                    'club_responsables' => $clubModel->getClubResponsables($clubId),
+                    'club_responsables' => $clubResponsables,
                 ]);
             }
             adminRedirect('Responsable retiré du club avec succès.');

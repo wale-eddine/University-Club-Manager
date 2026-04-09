@@ -44,6 +44,30 @@
             margin-bottom: 16px;
         }
 
+        .admin-toolbar.two-col {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .admin-toolbar.three-col {
+            grid-template-columns: 2fr 1fr 1fr;
+        }
+
+        .admin-toolbar .form-group {
+            margin-bottom: 0;
+        }
+
+        .admin-toolbar .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .admin-toolbar input,
+        .admin-toolbar select {
+            width: 100%;
+        }
+
         .admin-toolbar .form-group {
             margin-bottom: 0;
         }
@@ -280,7 +304,7 @@
             <p class="admin-section-note">Choisissez un role et/ou un statut, ou utilisez la recherche pour afficher les utilisateurs. Votre propre compte admin est volontairement masqué.</p>
             <div id="users-section-feedback" class="admin-feedback"></div>
 
-            <div class="admin-toolbar">
+            <div class="admin-toolbar three-col">
                 <div class="form-group">
                     <label for="user-search">Recherche</label>
                     <input type="text" id="user-search" placeholder="Nom, prénom, email...">
@@ -323,18 +347,29 @@
                             <tr data-role="<?php echo htmlspecialchars($user['role']); ?>" data-status="<?php echo htmlspecialchars((string)($user['account_status'] ?? 'active')); ?>" data-search="<?php echo htmlspecialchars(strtolower(trim((string)$user['prenom'] . ' ' . (string)$user['nom'] . ' ' . (string)$user['email'] . ' ' . (string)$user['role'] . ' ' . (string)($user['account_status'] ?? 'active')))); ?>">
                                 <td><?php echo (int)$user['id']; ?></td>
                                 <td>
-                                    <input type="text" class="admin-input-stack" form="user-form-<?php echo (int)$user['id']; ?>" name="prenom" value="<?php echo htmlspecialchars($user['prenom']); ?>" required>
+                                    <?php if ($user['role'] === 'admin'): ?>
+                                        <span><?php echo htmlspecialchars($user['prenom']); ?></span>
+                                    <?php else: ?>
+                                        <input type="text" class="admin-input-stack" form="user-form-<?php echo (int)$user['id']; ?>" name="prenom" value="<?php echo htmlspecialchars($user['prenom']); ?>" required>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
-                                    <input type="text" class="admin-input-stack" form="user-form-<?php echo (int)$user['id']; ?>" name="nom" value="<?php echo htmlspecialchars($user['nom']); ?>" required>
+                                    <?php if ($user['role'] === 'admin'): ?>
+                                        <span><?php echo htmlspecialchars($user['nom']); ?></span>
+                                    <?php else: ?>
+                                        <input type="text" class="admin-input-stack" form="user-form-<?php echo (int)$user['id']; ?>" name="nom" value="<?php echo htmlspecialchars($user['nom']); ?>" required>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
-                                    <input type="email" class="admin-input-stack" form="user-form-<?php echo (int)$user['id']; ?>" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required>
+                                    <?php if ($user['role'] === 'admin'): ?>
+                                        <span><?php echo htmlspecialchars($user['email']); ?></span>
+                                    <?php else: ?>
+                                        <input type="email" class="admin-input-stack" form="user-form-<?php echo (int)$user['id']; ?>" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <?php if ($user['role'] === 'admin'): ?>
                                         <span class="admin-badge admin-badge--primary">admin</span>
-                                        <input type="hidden" form="user-form-<?php echo (int)$user['id']; ?>" name="role" value="admin">
                                     <?php else: ?>
                                         <select class="admin-input-stack" form="user-form-<?php echo (int)$user['id']; ?>" name="role" required>
                                             <option value="etudiant" <?php echo $user['role'] === 'etudiant' ? 'selected' : ''; ?>>etudiant</option>
@@ -343,17 +378,28 @@
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <select class="admin-input-stack js-status-select" form="user-form-<?php echo (int)$user['id']; ?>" name="account_status" data-user-id="<?php echo (int)$user['id']; ?>">
-                                        <option value="active" <?php echo (($user['account_status'] ?? 'active') === 'active') ? 'selected' : ''; ?>>active</option>
-                                        <option value="inactive" <?php echo (($user['account_status'] ?? 'active') === 'inactive') ? 'selected' : ''; ?>>inactive</option>
-                                    </select>
-                                    <input type="text" class="admin-input-stack js-inactive-reason" form="user-form-<?php echo (int)$user['id']; ?>" name="inactive_reason" data-user-id="<?php echo (int)$user['id']; ?>" value="<?php echo htmlspecialchars((string)($user['inactive_reason'] ?? '')); ?>" placeholder="Raison si inactif" <?php echo (($user['account_status'] ?? 'active') === 'inactive') ? 'required' : ''; ?>>
+                                    <?php if ($user['role'] === 'admin'): ?>
+                                        <select class="admin-input-stack js-status-select" disabled>
+                                            <option value="active" <?php echo (($user['account_status'] ?? 'active') === 'active') ? 'selected' : ''; ?>>Actif</option>
+                                            <option value="inactive" <?php echo (($user['account_status'] ?? 'active') === 'inactive') ? 'selected' : ''; ?>>Inactif</option>
+                                        </select>
+                                    <?php else: ?>
+                                        <select class="admin-input-stack js-status-select" form="user-form-<?php echo (int)$user['id']; ?>" name="account_status" data-user-id="<?php echo (int)$user['id']; ?>">
+                                            <option value="active" <?php echo (($user['account_status'] ?? 'active') === 'active') ? 'selected' : ''; ?>>Actif</option>
+                                            <option value="inactive" <?php echo (($user['account_status'] ?? 'active') === 'inactive') ? 'selected' : ''; ?>>Inactif</option>
+                                        </select>
+                                        <input type="text" class="admin-input-stack js-inactive-reason" form="user-form-<?php echo (int)$user['id']; ?>" name="inactive_reason" data-user-id="<?php echo (int)$user['id']; ?>" value="<?php echo htmlspecialchars((string)($user['inactive_reason'] ?? '')); ?>" placeholder="Raison si inactif" <?php echo (($user['account_status'] ?? 'active') === 'inactive') ? 'required' : ''; ?>>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="row-actions">
-                                    <div class="admin-actions">
-                                        <input type="password" class="admin-input-stack" form="user-form-<?php echo (int)$user['id']; ?>" name="password" placeholder="Nouveau mot de passe">
-                                        <button type="submit" form="user-form-<?php echo (int)$user['id']; ?>" class="btn btn-primary btn-sm user-save-btn" data-user-id="<?php echo (int)$user['id']; ?>">Enregistrer</button>
-                                    </div>
+                                    <?php if ($user['role'] !== 'admin'): ?>
+                                        <div class="admin-actions">
+                                            <input type="password" class="admin-input-stack" form="user-form-<?php echo (int)$user['id']; ?>" name="password" placeholder="Nouveau mot de passe">
+                                            <button type="submit" form="user-form-<?php echo (int)$user['id']; ?>" class="btn btn-primary btn-sm user-save-btn" data-user-id="<?php echo (int)$user['id']; ?>">Enregistrer</button>
+                                        </div>
+                                    <?php else: ?>
+                                        <span class="admin-badge admin-badge--primary">Non modifiable</span>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -363,6 +409,7 @@
 
             <div class="admin-hidden-forms">
                 <?php foreach ($users as $user): ?>
+                    <?php if ($user['role'] === 'admin') continue; ?>
                     <form id="user-form-<?php echo (int)$user['id']; ?>" method="POST">
                         <input type="hidden" name="action" value="update_user">
                         <input type="hidden" name="user_id" value="<?php echo (int)$user['id']; ?>">
@@ -376,7 +423,7 @@
             <p class="admin-section-note">Un club peut avoir plusieurs responsables. Vous pouvez en ajouter ou en retirer. Si vous retirez le dernier, l'admin courant devient responsable par défaut.</p>
             <div id="clubs-section-feedback" class="admin-feedback"></div>
 
-            <div class="admin-toolbar" style="grid-template-columns: 1fr 1fr;">
+            <div class="admin-toolbar two-col">
                 <div class="form-group">
                     <label for="club-row-filter">Club</label>
                     <select id="club-row-filter">
@@ -460,7 +507,7 @@
             <p class="admin-section-note">Choisissez un utilisateur (etudiant ou responsable), filtrez selon son statut d'adhesion actuel, puis selectionnez le club de destination.</p>
             <div id="direct-section-feedback" class="admin-feedback"></div>
 
-            <div class="admin-toolbar" style="grid-template-columns: 1.5fr 1fr 1fr;">
+            <div class="admin-toolbar three-col" id="direct-admin-toolbar">
                 <div class="form-group">
                     <label for="direct-membership-filter">Deja dans un club</label>
                     <select id="direct-membership-filter">
