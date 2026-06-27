@@ -29,6 +29,8 @@ if (!$club_info || !canManageClubById((int)$club_info['id'])) {
     exit();
 }
 
+$budget_overview = $event->getClubBudgetOverview($club_id);
+
 // Initialize feedback messages for the form view.
 $error = '';
 $success = '';
@@ -94,6 +96,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $max_participants = null;
     $allow_non_members = isset($_POST['allow_non_members']) ? 1 : 0;
     $is_paid_event = isset($_POST['is_paid_event']) ? 1 : 0;
+    $estimated_cost_raw = trim($_POST['estimated_cost'] ?? '');
+    $estimated_cost = $estimated_cost_raw !== '' ? (float)$estimated_cost_raw : null;
+    $notification_scope = $_POST['notification_scope'] ?? 'club_members';
 
     if (empty($titre) || empty($description) || empty($date_debut) || empty($date_fin) || empty($lieu)) {
         $error = 'Veuillez remplir tous les champs.';
@@ -108,6 +113,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($error)) {
+        // Budget validation check for non-admins
+        if (!isAdmin() && $estimated_cost !== null) {
+            $eventYear = (int)date('Y', strtotime($date_debut));
+            $budget_overview = $event->getClubBudgetOverview($club_id, $eventYear);
+            $remaining = (float)($budget_overview['remaining_amount'] ?? 0);
+            if ($estimated_cost > $remaining) {
+                $error = 'Le coût estimé de cet événement (' . number_format($estimated_cost, 2, ',', ' ') . ' €) dépasse le budget restant du club pour l\'année ' . $eventYear . ' (' . number_format($remaining, 2, ',', ' ') . ' €).';
+            }
+        }
+    }
+
+    if (empty($error)) {
         [$imagePath, $uploadError] = uploadEventImage($_FILES['image'] ?? null);
         if (!empty($uploadError)) {
             $error = $uploadError;
@@ -118,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         }
 
-        if ($event->createEvent($club_id, $titre, $description, $date_debut, $date_fin, $lieu, $imagePath, $max_participants, $allow_non_members, $is_paid_event)) {
+        if ($event->createEvent($club_id, $titre, $description, $date_debut, $date_fin, $lieu, $imagePath, $max_participants, $allow_non_members, $is_paid_event, $estimated_cost, $notification_scope)) {
             $success = 'Événement créé avec succès!';
             header("Refresh: 2; url=../club_php/club_detail.php?id=$club_id");
         } else {

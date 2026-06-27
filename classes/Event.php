@@ -6,6 +6,15 @@ class Event {
     private $hasMaxParticipantsColumn = false;
     private $hasAllowNonMembersColumn = false;
     private $hasIsPaidEventColumn = false;
+    private $hasApprovalStatusColumn = false;
+    private $hasNotificationScopeColumn = false;
+    private $hasApprovedByColumn = false;
+    private $hasApprovedAtColumn = false;
+    private $hasRejectedByColumn = false;
+    private $hasRejectedAtColumn = false;
+    private $hasClosedAtColumn = false;
+    private $hasEstimatedCostColumn = false;
+    private $hasReviewEmailSentAtColumn = false;
     private $hasParticipantPaymentStatusColumn = false;
     private $hasParticipantPaymentDateColumn = false;
     private $hasSpecialIdColumn = false;
@@ -21,8 +30,49 @@ class Event {
     public function __construct($db) {
         $this->db = $db;
         $this->ensureEventColumns();
+        $this->ensureEventBudgetTables();
+        $this->ensureEventReviewTable();
         $this->ensureUserNotificationsTable();
         $this->ensureEventRejoinCooldownsTable();
+    }
+
+    // Create yearly budget storage when missing.
+    private function ensureEventBudgetTables() {
+        try {
+            $this->db->exec("CREATE TABLE IF NOT EXISTS CLUB_YEARLY_BUDGETS (
+                                id INT PRIMARY KEY AUTO_INCREMENT,
+                                club_id INT NOT NULL,
+                                budget_year INT NOT NULL,
+                                yearly_budget DECIMAL(12,2) NOT NULL DEFAULT 0,
+                                created_by INT NULL,
+                                updated_by INT NULL,
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                UNIQUE KEY unique_club_year_budget (club_id, budget_year),
+                                FOREIGN KEY (club_id) REFERENCES CLUBS(id) ON DELETE CASCADE,
+                                FOREIGN KEY (created_by) REFERENCES USERS(id) ON DELETE SET NULL,
+                                FOREIGN KEY (updated_by) REFERENCES USERS(id) ON DELETE SET NULL
+                            )");
+        } catch (Exception $e) {
+        }
+    }
+
+    // Create event review storage when missing.
+    private function ensureEventReviewTable() {
+        try {
+            $this->db->exec("CREATE TABLE IF NOT EXISTS EVENT_REVIEWS (
+                                id INT PRIMARY KEY AUTO_INCREMENT,
+                                event_id INT NOT NULL,
+                                user_id INT NOT NULL,
+                                rating TINYINT NOT NULL,
+                                feedback TEXT NULL,
+                                submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                UNIQUE KEY unique_event_user_review (event_id, user_id),
+                                FOREIGN KEY (event_id) REFERENCES EVENTS(id) ON DELETE CASCADE,
+                                FOREIGN KEY (user_id) REFERENCES USERS(id) ON DELETE CASCADE
+                            )");
+        } catch (Exception $e) {
+        }
     }
 
     // Create cooldown table used to block immediate rejoin.
@@ -109,6 +159,78 @@ class Event {
                 $this->hasIsPaidEventColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
             }
 
+            $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'approval_status'");
+            $this->hasApprovalStatusColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            if (!$this->hasApprovalStatusColumn) {
+                $this->db->exec("ALTER TABLE EVENTS ADD COLUMN approval_status ENUM('pending', 'approved', 'rejected', 'closed') NOT NULL DEFAULT 'pending' AFTER is_paid_event");
+                $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'approval_status'");
+                $this->hasApprovalStatusColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            }
+
+            $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'notification_scope'");
+            $this->hasNotificationScopeColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            if (!$this->hasNotificationScopeColumn) {
+                $this->db->exec("ALTER TABLE EVENTS ADD COLUMN notification_scope ENUM('none', 'responsables', 'club_members', 'platform') NOT NULL DEFAULT 'club_members' AFTER approval_status");
+                $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'notification_scope'");
+                $this->hasNotificationScopeColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            }
+
+            $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'approved_by'");
+            $this->hasApprovedByColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            if (!$this->hasApprovedByColumn) {
+                $this->db->exec("ALTER TABLE EVENTS ADD COLUMN approved_by INT NULL AFTER notification_scope");
+                $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'approved_by'");
+                $this->hasApprovedByColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            }
+
+            $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'approved_at'");
+            $this->hasApprovedAtColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            if (!$this->hasApprovedAtColumn) {
+                $this->db->exec("ALTER TABLE EVENTS ADD COLUMN approved_at DATETIME NULL AFTER approved_by");
+                $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'approved_at'");
+                $this->hasApprovedAtColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            }
+
+            $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'rejected_by'");
+            $this->hasRejectedByColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            if (!$this->hasRejectedByColumn) {
+                $this->db->exec("ALTER TABLE EVENTS ADD COLUMN rejected_by INT NULL AFTER approved_at");
+                $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'rejected_by'");
+                $this->hasRejectedByColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            }
+
+            $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'rejected_at'");
+            $this->hasRejectedAtColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            if (!$this->hasRejectedAtColumn) {
+                $this->db->exec("ALTER TABLE EVENTS ADD COLUMN rejected_at DATETIME NULL AFTER rejected_by");
+                $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'rejected_at'");
+                $this->hasRejectedAtColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            }
+
+            $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'closed_at'");
+            $this->hasClosedAtColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            if (!$this->hasClosedAtColumn) {
+                $this->db->exec("ALTER TABLE EVENTS ADD COLUMN closed_at DATETIME NULL AFTER rejected_at");
+                $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'closed_at'");
+                $this->hasClosedAtColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            }
+
+            $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'estimated_cost'");
+            $this->hasEstimatedCostColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            if (!$this->hasEstimatedCostColumn) {
+                $this->db->exec("ALTER TABLE EVENTS ADD COLUMN estimated_cost DECIMAL(12,2) NULL AFTER max_participants");
+                $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'estimated_cost'");
+                $this->hasEstimatedCostColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            }
+
+            $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'review_email_sent_at'");
+            $this->hasReviewEmailSentAtColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            if (!$this->hasReviewEmailSentAtColumn) {
+                $this->db->exec("ALTER TABLE EVENTS ADD COLUMN review_email_sent_at DATETIME NULL AFTER closed_at");
+                $stmt = $this->db->query("SHOW COLUMNS FROM EVENTS LIKE 'review_email_sent_at'");
+                $this->hasReviewEmailSentAtColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+            }
+
             $stmt = $this->db->query("SHOW COLUMNS FROM EVENT_PARTICIPANTS LIKE 'payment_status'");
             $this->hasParticipantPaymentStatusColumn = $stmt && $stmt->fetch(PDO::FETCH_ASSOC) !== false;
 
@@ -132,6 +254,15 @@ class Event {
             $this->hasMaxParticipantsColumn = false;
             $this->hasAllowNonMembersColumn = false;
             $this->hasIsPaidEventColumn = false;
+            $this->hasApprovalStatusColumn = false;
+            $this->hasNotificationScopeColumn = false;
+            $this->hasApprovedByColumn = false;
+            $this->hasApprovedAtColumn = false;
+            $this->hasRejectedByColumn = false;
+            $this->hasRejectedAtColumn = false;
+            $this->hasClosedAtColumn = false;
+            $this->hasEstimatedCostColumn = false;
+            $this->hasReviewEmailSentAtColumn = false;
             $this->hasParticipantPaymentStatusColumn = false;
             $this->hasParticipantPaymentDateColumn = false;
         }
@@ -155,8 +286,101 @@ class Event {
         return (string)($stmt->fetchColumn() ?: 'unknown@club.local');
     }
 
+    // Fetch one event row without triggering lifecycle normalization.
+    private function getEventRowRaw($eventId) {
+        $stmt = $this->db->prepare("SELECT e.*, c.nom as club_nom, c.responsable_id as club_responsable_id
+                                    FROM EVENTS e
+                                    JOIN CLUBS c ON e.club_id = c.id
+                                    WHERE e.id = ?");
+        $stmt->execute([(int)$eventId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: false;
+    }
+
+    // Normalize lifecycle state from the current event dates.
+    private function syncEventLifecycleRow(array $eventRow) {
+        $eventId = (int)($eventRow['id'] ?? 0);
+        if ($eventId <= 0) {
+            return $eventRow;
+        }
+
+        $approvalStatus = (string)($eventRow['approval_status'] ?? 'pending');
+        $endDateRaw = (string)($eventRow['date_fin'] ?? '');
+
+        if ($approvalStatus === 'approved' && $endDateRaw !== '') {
+            try {
+                $endDate = new DateTimeImmutable($endDateRaw);
+                if ($endDate < new DateTimeImmutable('now')) {
+                    $this->closeEvent($eventId, true);
+                    $eventRow['approval_status'] = 'closed';
+                    $eventRow['closed_at'] = $eventRow['closed_at'] ?? date('Y-m-d H:i:s');
+                }
+            } catch (Exception $e) {
+            }
+        }
+
+        return $eventRow;
+    }
+
+    // Return a readable status label for templates.
+    public function getEventStatusLabel($eventRow) {
+        $status = (string)($eventRow['approval_status'] ?? 'pending');
+        $labels = [
+            'pending' => 'En attente',
+            'approved' => 'Approuvé',
+            'rejected' => 'Rejeté',
+            'closed' => 'Terminé',
+        ];
+
+        return $labels[$status] ?? 'En attente';
+    }
+
+    // Return the remaining budget for one club/year.
+    public function getClubBudgetOverview($clubId, $year = null) {
+        $clubId = (int)$clubId;
+        $year = $year !== null ? (int)$year : (int)date('Y');
+        $overview = [
+            'club_id' => $clubId,
+            'budget_year' => $year,
+            'yearly_budget' => 0,
+            'spent_amount' => 0,
+            'remaining_amount' => 0,
+        ];
+
+        if ($clubId <= 0) {
+            return $overview;
+        }
+
+        $stmt = $this->db->prepare("SELECT yearly_budget FROM CLUB_YEARLY_BUDGETS WHERE club_id = ? AND budget_year = ? LIMIT 1");
+        $stmt->execute([$clubId, $year]);
+        $overview['yearly_budget'] = (float)($stmt->fetchColumn() ?: 0);
+
+        $stmt = $this->db->prepare("SELECT COALESCE(SUM(CASE WHEN approval_status = 'approved' AND estimated_cost IS NOT NULL THEN estimated_cost ELSE 0 END), 0)
+                                    FROM EVENTS
+                                    WHERE club_id = ? AND YEAR(date_debut) = ?");
+        $stmt->execute([$clubId, $year]);
+        $overview['spent_amount'] = (float)$stmt->fetchColumn();
+        $overview['remaining_amount'] = max(0, $overview['yearly_budget'] - $overview['spent_amount']);
+
+        return $overview;
+    }
+
+    // Persist a yearly club budget.
+    public function upsertClubYearlyBudget($clubId, $year, $yearlyBudget, $actorUserId = null) {
+        $stmt = $this->db->prepare("INSERT INTO CLUB_YEARLY_BUDGETS (club_id, budget_year, yearly_budget, created_by, updated_by)
+                                    VALUES (?, ?, ?, ?, ?)
+                                    ON DUPLICATE KEY UPDATE yearly_budget = VALUES(yearly_budget), updated_by = VALUES(updated_by)");
+        return $stmt->execute([
+            (int)$clubId,
+            (int)$year,
+            max(0, (float)$yearlyBudget),
+            $actorUserId !== null ? (int)$actorUserId : null,
+            $actorUserId !== null ? (int)$actorUserId : null,
+        ]);
+    }
+
     // Create a new event with optional dynamic fields.
-    public function createEvent($club_id, $titre, $description, $date_debut, $date_fin, $lieu, $image_path = null, $max_participants = null, $allow_non_members = 0, $is_paid_event = 0) {
+    public function createEvent($club_id, $titre, $description, $date_debut, $date_fin, $lieu, $image_path = null, $max_participants = null, $allow_non_members = 0, $is_paid_event = 0, $estimated_cost = null, $notification_scope = 'club_members') {
         $columns = ['club_id', 'titre', 'description', 'date_debut', 'date_fin', 'lieu'];
         $values = [$club_id, $titre, $description, $date_debut, $date_fin, $lieu];
 
@@ -175,6 +399,11 @@ class Event {
             $values[] = $max_participants;
         }
 
+        if ($this->hasEstimatedCostColumn) {
+            $columns[] = 'estimated_cost';
+            $values[] = $estimated_cost !== null && $estimated_cost !== '' ? (float)$estimated_cost : null;
+        }
+
         if ($this->hasAllowNonMembersColumn) {
             $columns[] = 'allow_non_members';
             $values[] = (int)$allow_non_members === 1 ? 1 : 0;
@@ -183,6 +412,46 @@ class Event {
         if ($this->hasIsPaidEventColumn) {
             $columns[] = 'is_paid_event';
             $values[] = (int)$is_paid_event === 1 ? 1 : 0;
+        }
+
+        if ($this->hasApprovalStatusColumn) {
+            $columns[] = 'approval_status';
+            $values[] = 'pending';
+        }
+
+        if ($this->hasNotificationScopeColumn) {
+            $columns[] = 'notification_scope';
+            $values[] = in_array($notification_scope, ['none', 'responsables', 'club_members', 'platform'], true) ? $notification_scope : 'club_members';
+        }
+
+        if ($this->hasApprovedByColumn) {
+            $columns[] = 'approved_by';
+            $values[] = null;
+        }
+
+        if ($this->hasApprovedAtColumn) {
+            $columns[] = 'approved_at';
+            $values[] = null;
+        }
+
+        if ($this->hasRejectedByColumn) {
+            $columns[] = 'rejected_by';
+            $values[] = null;
+        }
+
+        if ($this->hasRejectedAtColumn) {
+            $columns[] = 'rejected_at';
+            $values[] = null;
+        }
+
+        if ($this->hasClosedAtColumn) {
+            $columns[] = 'closed_at';
+            $values[] = null;
+        }
+
+        if ($this->hasReviewEmailSentAtColumn) {
+            $columns[] = 'review_email_sent_at';
+            $values[] = null;
         }
 
         $placeholders = implode(', ', array_fill(0, count($columns), '?'));
@@ -199,10 +468,13 @@ class Event {
                                                                                         WHERE ep.event_id = e.id
                                                                                             AND COALESCE(u.account_status, 'active') = 'active') AS participant_count
                                     FROM EVENTS e 
-                                    WHERE e.club_id = ? 
+                                    WHERE e.club_id = ?
+                                      AND e.approval_status IN ('approved', 'closed') 
                                     ORDER BY e.date_debut DESC");
         $stmt->execute([$club_id]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map(function ($row) {
+            return $this->syncEventLifecycleRow($row);
+        }, $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     // List all events with club and participant metadata.
@@ -215,9 +487,12 @@ class Event {
                                                                                             AND COALESCE(u.account_status, 'active') = 'active') AS participant_count
                                     FROM EVENTS e 
                                     JOIN CLUBS c ON e.club_id = c.id 
+                                    WHERE e.approval_status IN ('approved', 'closed')
                                     ORDER BY e.date_debut DESC");
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map(function ($row) {
+            return $this->syncEventLifecycleRow($row);
+        }, $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     // Return events ordered by most recently created.
@@ -230,9 +505,30 @@ class Event {
                                                                                             AND COALESCE(u.account_status, 'active') = 'active') AS participant_count
                                     FROM EVENTS e
                                     JOIN CLUBS c ON e.club_id = c.id
+                                    WHERE e.approval_status IN ('approved', 'closed')
                                     ORDER BY e.created_at DESC");
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map(function ($row) {
+            return $this->syncEventLifecycleRow($row);
+        }, $stmt->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    // Return approved events for the public listing.
+    public function getPublicEvents() {
+        $stmt = $this->db->prepare("SELECT e.*, c.nom as club_nom,
+                                                                                     (SELECT COUNT(*)
+                                                                                        FROM EVENT_PARTICIPANTS ep
+                                                                                        JOIN USERS u ON u.id = ep.user_id
+                                                                                        WHERE ep.event_id = e.id
+                                                                                            AND COALESCE(u.account_status, 'active') = 'active') AS participant_count
+                                    FROM EVENTS e
+                                    JOIN CLUBS c ON e.club_id = c.id
+                                    WHERE e.approval_status = 'approved'
+                                    ORDER BY e.date_debut DESC");
+        $stmt->execute();
+        return array_map(function ($row) {
+            return $this->syncEventLifecycleRow($row);
+        }, $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     // Fetch one event by id with club ownership info.
@@ -241,11 +537,12 @@ class Event {
                                     JOIN CLUBS c ON e.club_id = c.id 
                                     WHERE e.id = ?");
         $stmt->execute([$id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? $this->syncEventLifecycleRow($row) : false;
     }
 
     // Update event fields including optional schema columns.
-    public function updateEvent($id, $titre, $description, $date_debut, $date_fin, $lieu, $image_path = null, $max_participants = null, $allow_non_members = 0, $is_paid_event = 0) {
+    public function updateEvent($id, $titre, $description, $date_debut, $date_fin, $lieu, $image_path = null, $max_participants = null, $allow_non_members = 0, $is_paid_event = 0, $estimated_cost = null, $notification_scope = null) {
         $assignments = [
             'titre = ?',
             'description = ?',
@@ -265,6 +562,11 @@ class Event {
             $values[] = $max_participants;
         }
 
+        if ($this->hasEstimatedCostColumn) {
+            $assignments[] = 'estimated_cost = ?';
+            $values[] = $estimated_cost !== null && $estimated_cost !== '' ? (float)$estimated_cost : null;
+        }
+
         if ($this->hasAllowNonMembersColumn) {
             $assignments[] = 'allow_non_members = ?';
             $values[] = (int)$allow_non_members === 1 ? 1 : 0;
@@ -275,9 +577,285 @@ class Event {
             $values[] = (int)$is_paid_event === 1 ? 1 : 0;
         }
 
+        if ($this->hasNotificationScopeColumn && $notification_scope !== null) {
+            $assignments[] = 'notification_scope = ?';
+            $values[] = in_array($notification_scope, ['none', 'responsables', 'club_members', 'platform'], true) ? $notification_scope : 'club_members';
+        }
+
         $values[] = $id;
         $stmt = $this->db->prepare("UPDATE EVENTS SET " . implode(', ', $assignments) . " WHERE id = ?");
         return $stmt->execute($values);
+    }
+
+    // Approve a pending event.
+    public function approveEvent($eventId, $adminUserId, $notificationScope = 'club_members') {
+        $eventId = (int)$eventId;
+        $adminUserId = (int)$adminUserId;
+        $eventInfo = $this->getEventById($eventId);
+
+        if (!$eventInfo || (string)($eventInfo['approval_status'] ?? 'pending') !== 'pending') {
+            return ['success' => false, 'message' => 'Événement introuvable ou déjà traité.'];
+        }
+
+        if ($this->hasEstimatedCostColumn) {
+            $year = (int)date('Y', strtotime((string)($eventInfo['date_debut'] ?? 'now')));
+            $budget = $this->getClubBudgetOverview((int)$eventInfo['club_id'], $year);
+            $estimatedCost = (float)($eventInfo['estimated_cost'] ?? 0);
+            if ($estimatedCost > 0 && $budget['remaining_amount'] < $estimatedCost) {
+                return ['success' => false, 'message' => 'Budget annuel insuffisant pour approuver cet événement.'];
+            }
+        }
+
+        $notificationScope = in_array($notificationScope, ['none', 'responsables', 'club_members', 'platform'], true) ? $notificationScope : 'club_members';
+
+        $stmt = $this->db->prepare("UPDATE EVENTS
+                                    SET approval_status = 'approved',
+                                        notification_scope = ?,
+                                        approved_by = ?,
+                                        approved_at = NOW(),
+                                        rejected_by = NULL,
+                                        rejected_at = NULL
+                                    WHERE id = ?");
+        $stmt->execute([$notificationScope, $adminUserId > 0 ? $adminUserId : null, $eventId]);
+
+        $this->notifyApprovedEventAudience($eventInfo, $notificationScope);
+        return ['success' => true, 'message' => 'Événement approuvé avec succès.'];
+    }
+
+    // Reject a pending event.
+    public function rejectEvent($eventId, $adminUserId) {
+        $eventId = (int)$eventId;
+        $adminUserId = (int)$adminUserId;
+        $eventInfo = $this->getEventById($eventId);
+
+        if (!$eventInfo || (string)($eventInfo['approval_status'] ?? 'pending') !== 'pending') {
+            return ['success' => false, 'message' => 'Événement introuvable ou déjà traité.'];
+        }
+
+        $stmt = $this->db->prepare("UPDATE EVENTS
+                                    SET approval_status = 'rejected',
+                                        rejected_by = ?,
+                                        rejected_at = NOW(),
+                                        approved_by = NULL,
+                                        approved_at = NULL
+                                    WHERE id = ?");
+        $stmt->execute([$adminUserId > 0 ? $adminUserId : null, $eventId]);
+
+        return ['success' => true, 'message' => 'Événement rejeté.'];
+    }
+
+    // Close one event when it ends.
+    public function closeEvent($eventId, $sendFeedbackEmails = true) {
+        $eventId = (int)$eventId;
+        if ($eventId <= 0) {
+            return false;
+        }
+
+        $eventInfo = $this->getEventRowRaw($eventId);
+        if (!$eventInfo) {
+            return false;
+        }
+
+        $stmt = $this->db->prepare("UPDATE EVENTS SET approval_status = 'closed', closed_at = COALESCE(closed_at, NOW()) WHERE id = ?");
+        $stmt->execute([$eventId]);
+
+        if ($sendFeedbackEmails && empty($eventInfo['review_email_sent_at'])) {
+            $this->sendEventFeedbackInvitations($eventInfo);
+        }
+
+        return true;
+    }
+
+    // Return pending events awaiting admin approval.
+    public function getPendingEvents() {
+        $stmt = $this->db->prepare("SELECT e.*, c.nom AS club_nom, u.prenom AS responsable_prenom, u.nom AS responsable_nom
+                                    FROM EVENTS e
+                                    JOIN CLUBS c ON c.id = e.club_id
+                                    JOIN USERS u ON u.id = c.responsable_id
+                                    WHERE e.approval_status = 'pending'
+                                    ORDER BY e.created_at ASC, e.id ASC");
+        $stmt->execute();
+        return array_map(function ($row) {
+            return $this->syncEventLifecycleRow($row);
+        }, $stmt->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    // Return the agenda events visible to responsables and admins.
+    public function getAgendaEvents($year = null) {
+        $year = $year !== null ? (int)$year : (int)date('Y');
+        $stmt = $this->db->prepare("SELECT e.*, c.nom AS club_nom, c.responsable_id AS club_responsable_id,
+                                           (SELECT COUNT(*)
+                                              FROM EVENT_PARTICIPANTS ep
+                                              JOIN USERS u ON u.id = ep.user_id
+                                              WHERE ep.event_id = e.id AND COALESCE(u.account_status, 'active') = 'active') AS participant_count
+                                    FROM EVENTS e
+                                    JOIN CLUBS c ON c.id = e.club_id
+                                    WHERE e.approval_status IN ('approved', 'closed')
+                                      AND YEAR(e.date_debut) = ?
+                                    ORDER BY e.date_debut ASC, e.date_fin ASC, e.id ASC");
+        $stmt->execute([$year]);
+        return array_map(function ($row) {
+            return $this->syncEventLifecycleRow($row);
+        }, $stmt->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    // Return review summaries for the admin panel.
+    public function getEventReviewSummaries($limit = 50) {
+        $limit = max(1, min(200, (int)$limit));
+        $stmt = $this->db->prepare("SELECT e.id AS event_id,
+                                           e.club_id AS club_id,
+                                           e.titre,
+                                           e.date_debut,
+                                           e.date_fin,
+                                           c.nom AS club_nom,
+                                           COUNT(er.id) AS review_count,
+                                           AVG(er.rating) AS average_rating,
+                                           SUM(CASE WHEN er.rating = 1 THEN 1 ELSE 0 END) AS very_bad_count,
+                                           SUM(CASE WHEN er.rating = 2 THEN 1 ELSE 0 END) AS bad_count,
+                                           SUM(CASE WHEN er.rating = 3 THEN 1 ELSE 0 END) AS neutral_count,
+                                           SUM(CASE WHEN er.rating = 4 THEN 1 ELSE 0 END) AS good_count,
+                                           SUM(CASE WHEN er.rating = 5 THEN 1 ELSE 0 END) AS very_good_count
+                                    FROM EVENTS e
+                                    JOIN CLUBS c ON c.id = e.club_id
+                                    LEFT JOIN EVENT_REVIEWS er ON er.event_id = e.id
+                                    GROUP BY e.id, e.club_id, e.titre, e.date_debut, e.date_fin, c.nom
+                                    ORDER BY e.date_debut DESC, e.id DESC
+                                    LIMIT :limit");
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Store one event review.
+    public function saveEventReview($eventId, $userId, $rating, $feedback = '') {
+        $rating = (int)$rating;
+        if ($rating < 1 || $rating > 5) {
+            return false;
+        }
+
+        $stmt = $this->db->prepare("INSERT INTO EVENT_REVIEWS (event_id, user_id, rating, feedback)
+                                    VALUES (?, ?, ?, ?)
+                                    ON DUPLICATE KEY UPDATE rating = VALUES(rating), feedback = VALUES(feedback), submitted_at = CURRENT_TIMESTAMP");
+        return $stmt->execute([(int)$eventId, (int)$userId, $rating, trim((string)$feedback)]);
+    }
+
+    // Return reviews collected for one event.
+    public function getEventReviews($eventId) {
+        $stmt = $this->db->prepare("SELECT er.*, u.prenom, u.nom, u.email
+                                    FROM EVENT_REVIEWS er
+                                    JOIN USERS u ON u.id = er.user_id
+                                    WHERE er.event_id = ?
+                                    ORDER BY er.submitted_at DESC");
+        $stmt->execute([(int)$eventId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Notify event audience when an event is approved.
+    private function notifyApprovedEventAudience(array $eventInfo, $notificationScope) {
+        $notificationScope = in_array($notificationScope, ['none', 'responsables', 'club_members', 'platform'], true) ? $notificationScope : 'club_members';
+        if ($notificationScope === 'none') {
+            return true;
+        }
+
+        $eventId = (int)($eventInfo['id'] ?? 0);
+        $clubId = (int)($eventInfo['club_id'] ?? 0);
+        $eventTitle = (string)($eventInfo['titre'] ?? 'Événement');
+        $eventDate = date('d/m/Y H:i', strtotime((string)($eventInfo['date_debut'] ?? 'now')));
+        $eventUrl = buildApplicationUrl('backend/event_php/event_detail.php?id=' . $eventId);
+
+        if ($notificationScope === 'platform') {
+            $stmt = $this->db->prepare("SELECT id, prenom, nom, email FROM USERS WHERE COALESCE(account_status, 'active') = 'active'");
+            $stmt->execute();
+        } elseif ($notificationScope === 'responsables') {
+            $stmt = $this->db->prepare("SELECT u.id, u.prenom, u.nom, u.email
+                                        FROM CLUB_RESPONSABLES cr
+                                        JOIN USERS u ON u.id = cr.user_id
+                                        WHERE cr.club_id = ? AND COALESCE(u.account_status, 'active') = 'active'");
+            $stmt->execute([$clubId]);
+        } else {
+            $stmt = $this->db->prepare("SELECT u.id, u.prenom, u.nom, u.email
+                                        FROM CLUB_MEMBERS cm
+                                        JOIN USERS u ON u.id = cm.user_id
+                                        WHERE cm.club_id = ? AND COALESCE(u.account_status, 'active') = 'active'");
+            $stmt->execute([$clubId]);
+        }
+
+        $recipients = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (empty($recipients)) {
+            return true;
+        }
+
+        require_once(__DIR__ . '/../config/mail.php');
+        $mailConfig = getMailConfig();
+        $notifStmt = $this->db->prepare("INSERT INTO USER_NOTIFICATIONS (user_id, type, title, message, is_read) VALUES (?, 'event_published', ?, ?, 0)");
+
+        $emails = [];
+        foreach ($recipients as $recipient) {
+            $userId = (int)($recipient['id'] ?? 0);
+            if ($userId <= 0) {
+                continue;
+            }
+
+            $notifStmt->execute([$userId, 'Nouvel événement validé', 'L\'événement "' . $eventTitle . '" est maintenant publié.']);
+
+            $email = trim((string)($recipient['email'] ?? ''));
+            if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $emails[] = $email;
+            }
+        }
+
+        if (!empty($emails)) {
+            $subject = 'Nouvel événement validé: ' . $eventTitle;
+            $htmlBody = '<p>Bonjour,</p>'
+                . '<p>L\'événement <strong>' . htmlspecialchars($eventTitle, ENT_QUOTES, 'UTF-8') . '</strong> a été validé.</p>'
+                . '<p>Date: ' . htmlspecialchars($eventDate, ENT_QUOTES, 'UTF-8') . '</p>'
+                . '<p><a href="' . htmlspecialchars($eventUrl, ENT_QUOTES, 'UTF-8') . '">Voir l\'événement</a></p>';
+            $textBody = "Bonjour,\n\nL'événement {$eventTitle} a été validé.\nDate: {$eventDate}\nVoir: {$eventUrl}\n";
+            sendSmtpMail($emails, $subject, $htmlBody, $textBody, $mailConfig);
+        }
+
+        return true;
+    }
+
+    // Send feedback invites after an event closes.
+    private function sendEventFeedbackInvitations(array $eventInfo) {
+        $eventId = (int)($eventInfo['id'] ?? 0);
+        if ($eventId <= 0) {
+            return false;
+        }
+
+        $stmt = $this->db->prepare("SELECT u.id, u.prenom, u.nom, u.email
+                                    FROM EVENT_PARTICIPANTS ep
+                                    JOIN USERS u ON u.id = ep.user_id
+                                    WHERE ep.event_id = ? AND COALESCE(u.account_status, 'active') = 'active'");
+        $stmt->execute([$eventId]);
+        $participants = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        require_once(__DIR__ . '/../config/mail.php');
+        $mailConfig = getMailConfig();
+        $feedbackUrl = buildApplicationUrl('backend/event_php/event_feedback.php?id=' . $eventId);
+        $eventTitle = (string)($eventInfo['titre'] ?? 'Événement');
+
+        $emails = [];
+        foreach ($participants as $participant) {
+            $email = trim((string)($participant['email'] ?? ''));
+            if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $emails[] = $email;
+            }
+        }
+
+        if (!empty($emails)) {
+            $subject = 'Partagez votre avis sur: ' . $eventTitle;
+            $htmlBody = '<p>Bonjour,</p>'
+                . '<p>L\'événement <strong>' . htmlspecialchars($eventTitle, ENT_QUOTES, 'UTF-8') . '</strong> est terminé.</p>'
+                . '<p><a href="' . htmlspecialchars($feedbackUrl, ENT_QUOTES, 'UTF-8') . '">Remplir le formulaire d\'expérience</a></p>';
+            $textBody = "Bonjour,\n\nL'événement {$eventTitle} est terminé.\nDonnez votre avis: {$feedbackUrl}\n";
+            sendSmtpMail($emails, $subject, $htmlBody, $textBody, $mailConfig);
+        }
+
+        $updateStmt = $this->db->prepare("UPDATE EVENTS SET review_email_sent_at = NOW() WHERE id = ?");
+        $updateStmt->execute([$eventId]);
+        return true;
     }
 
     // Delete an event and notify subscribed participants.
@@ -543,10 +1121,13 @@ class Event {
                                     JOIN CLUBS c ON e.club_id = c.id
                                     LEFT JOIN EVENT_PARTICIPANTS ep ON e.id = ep.event_id AND ep.user_id = ?
                                     LEFT JOIN CLUB_RESPONSABLES cr ON cr.club_id = c.id AND cr.user_id = ?
-                                    WHERE ep.user_id IS NOT NULL OR cr.user_id IS NOT NULL
+                                    WHERE (ep.user_id IS NOT NULL OR cr.user_id IS NOT NULL)
+                                      AND e.approval_status IN ('approved', 'closed')
                                     ORDER BY e.date_debut DESC");
         $stmt->execute([$user_id, $user_id]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map(function ($row) {
+            return $this->syncEventLifecycleRow($row);
+        }, $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     // Search events by title or description text.
@@ -559,11 +1140,14 @@ class Event {
                                                                                             AND COALESCE(u.account_status, 'active') = 'active') AS participant_count
                                     FROM EVENTS e 
                                     JOIN CLUBS c ON e.club_id = c.id 
-                                    WHERE (e.titre LIKE ? OR e.description LIKE ?)
+                                                                        WHERE e.approval_status = 'approved'
+                                      AND (e.titre LIKE ? OR e.description LIKE ?)
                                     ORDER BY e.date_debut DESC");
         $search = "%$query%";
         $stmt->execute([$search, $search]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map(function ($row) {
+            return $this->syncEventLifecycleRow($row);
+        }, $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     // Return unread notifications for a specific user.

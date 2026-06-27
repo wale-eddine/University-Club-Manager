@@ -69,6 +69,8 @@ try {
     $tables = [
         'EVENT_PARTICIPANTS',
         'MEMBERSHIP_REQUEST_COOLDOWNS',
+        'EVENT_REVIEWS',
+        'CLUB_YEARLY_BUDGETS',
         'MEMBERSHIP_REQUESTS',
         'CLUB_MEMBERS',
         'USER_NOTIFICATIONS',

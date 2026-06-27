@@ -1,0 +1,120 @@
+<?php $profileNotif = $profileNotif ?? getProfileRequestNotification(); ?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avis sur l'événement - University Clubs</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/variables.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/layout.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/header-nav.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/buttons.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/forms.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/alerts.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/cards.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/dashboard.css')); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars(phpRoute('../styles/responsive.css')); ?>">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <h1><a href="../index.php" class="brand-link"><img src="<?php echo htmlspecialchars(phpRoute('../media/iit.png')); ?>" alt="IIT" class="brand-logo"> University Clubs</a></h1>
+                <button class="menu-toggle" type="button" aria-label="Ouvrir le menu" aria-controls="primary-nav" aria-expanded="false">
+                    <span></span><span></span><span></span>
+                </button>
+                <ul id="primary-nav" class="nav-links">
+                    <li><a href="../index.php">Accueil</a></li>
+                    <li><a href="../club_php/clubs.php">Clubs</a></li>
+                    <li><a href="events.php">Événements</a></li>
+                    <?php if (isLoggedIn()): ?>
+                        <li><a href="../agenda.php">Agenda</a></li>
+                    <?php endif; ?>
+                    <li><a href="../dashboard.php">Dashboard</a></li>
+                    <?php if (isAdmin()): ?><li><a href="../admin.php">Admin</a></li><?php endif; ?>
+                    <li class="profile-menu <?php echo $profileNotif['has_pending'] ? 'has-pending' : ''; ?>">
+                        <a href="../profile_php/profile.php" class="profile-trigger"><img src="<?php echo htmlspecialchars(phpRoute('../media/profil.png')); ?>" alt="Profil" class="profile-icon"> Profil<?php if ($profileNotif['has_pending']): ?><span class="notif-dot"></span><?php endif; ?></a>
+                        <ul class="profile-dropdown">
+                            <?php if (!empty($profileNotif['can_view_requests'])): ?><li><a href="<?php echo htmlspecialchars($profileNotif['requests_link']); ?>">Demandes d'adhesion<?php if ($profileNotif['has_pending']): ?><span class="notif-count"><?php echo (int)$profileNotif['pending_count']; ?></span><?php endif; ?></a></li><?php endif; ?>
+                            <li><a href="../profile_php/logout.php">Déconnexion</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="page-title">
+            <h2>Votre retour sur l'événement</h2>
+        </div>
+
+        <div class="dashboard-section">
+            <h3><?php echo htmlspecialchars($event_info['titre']); ?></h3>
+            <p><strong>Club:</strong> <?php echo htmlspecialchars($event_info['club_nom']); ?></p>
+            <p><strong>Période:</strong> <?php echo htmlspecialchars(date('d/m/Y H:i', strtotime((string)$event_info['date_debut'])) . ' - ' . date('d/m/Y H:i', strtotime((string)$event_info['date_fin']))); ?></p>
+
+            <?php if (!empty($message)): ?>
+                <div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div>
+            <?php endif; ?>
+            <?php if (!empty($error)): ?>
+                <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+            <?php endif; ?>
+
+            <form method="POST">
+                <div class="form-group">
+                    <label for="rating">Votre appréciation</label>
+                    <select id="rating" name="rating" required>
+                        <option value="5">Très bien</option>
+                        <option value="4">Bien</option>
+                        <option value="3">Neutre</option>
+                        <option value="2">Mauvais</option>
+                        <option value="1">Très mauvais</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="feedback">Commentaire facultatif</label>
+                    <textarea id="feedback" name="feedback" rows="5" placeholder="Dites ce qui vous a plu ou non..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Envoyer mon avis</button>
+            </form>
+        </div>
+
+        <div class="dashboard-section">
+            <h3>Retours déjà enregistrés</h3>
+            <?php if (empty($event_reviews)): ?>
+                <p>Aucun retour pour le moment.</p>
+            <?php else: ?>
+                <div class="admin-table-wrap">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Participant</th>
+                                <th>Note</th>
+                                <th>Commentaire</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($event_reviews as $review): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars(trim((string)$review['prenom'] . ' ' . (string)$review['nom'])); ?></td>
+                                    <td><?php echo (int)$review['rating']; ?>/5</td>
+                                    <td><?php echo htmlspecialchars((string)($review['feedback'] ?? '')); ?></td>
+                                    <td><?php echo htmlspecialchars(date('d/m/Y H:i', strtotime((string)$review['submitted_at']))); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Plateforme de Gestion des Clubs Universitaires. Tous droits réservés.</p>
+    </footer>
+    <script src="<?php echo htmlspecialchars(phpRoute('../scripts/navbar.js')); ?>"></script>
+</body>
+</html>

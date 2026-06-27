@@ -8,6 +8,12 @@ require_once('../../classes/Event.php');
 
 // Sends users back to login with a friendly OAuth error.
 function redirectToLoginWithOAuthError($message) {
+    if (isset($_SESSION['google_calendar_linking']) && $_SESSION['google_calendar_linking'] === true) {
+        unset($_SESSION['google_calendar_linking']);
+        header('Location: profile.php?error=' . urlencode((string)$message));
+        exit();
+    }
+
     $redirectAfterLogin = $_SESSION['oauth_post_login_redirect'] ?? '';
     $loginHref = 'login.php?oauth_error=' . urlencode((string)$message);
 
@@ -211,6 +217,39 @@ $avatarUrl = trim((string)($profile['picture'] ?? ''));
 
 if ($googleId === '' || $email === '' || !$emailVerified) {
     redirectToLoginWithOAuthError('Profil Google incomplet ou email non verifie.');
+}
+
+if (isset($_SESSION['google_calendar_linking']) && $_SESSION['google_calendar_linking'] === true) {
+    $db = new Database();
+    $connection = $db->getConnection();
+    $userId = (int)($_SESSION['user_id'] ?? 0);
+    if ($userId <= 0) {
+        redirectToLoginWithOAuthError('Utilisateur non connecté.');
+    }
+
+    $refreshToken = trim((string)($tokenResponse['refresh_token'] ?? ''));
+    $expiresIn = (int)($tokenResponse['expires_in'] ?? 3600);
+    $expiresAt = time() + $expiresIn;
+
+    if ($refreshToken !== '') {
+        $stmt = $connection->prepare("UPDATE USERS SET google_id = ?, google_access_token = ?, google_refresh_token = ?, google_token_expires_at = ? WHERE id = ?");
+        $stmt->execute([$googleId, $accessToken, $refreshToken, $expiresAt, $userId]);
+    } else {
+        $stmt = $connection->prepare("UPDATE USERS SET google_id = ?, google_access_token = ?, google_token_expires_at = ? WHERE id = ?");
+        $stmt->execute([$googleId, $accessToken, $expiresAt, $userId]);
+    }
+
+    // Refresh the user session in $_SESSION
+    $stmt = $connection->prepare("SELECT * FROM USERS WHERE id = ? LIMIT 1");
+    $stmt->execute([$userId]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($user) {
+        $_SESSION['user'] = $user;
+    }
+
+    unset($_SESSION['google_calendar_linking']);
+    header('Location: profile.php?success=' . urlencode('Votre Google Calendar a été connecté avec succès !'));
+    exit();
 }
 
 if ($prenom === '' || $nom === '') {

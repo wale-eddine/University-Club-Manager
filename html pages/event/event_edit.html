@@ -36,6 +36,9 @@
                     <li><a href="../index.php">Accueil</a></li>
                     <li><a href="../club_php/clubs.php">Clubs</a></li>
                     <li><a href="events.php">Événements</a></li>
+                    <?php if (isLoggedIn()): ?>
+                        <li><a href="../agenda.php">Agenda</a></li>
+                    <?php endif; ?>
                     <li><a href="../dashboard.php">Dashboard</a></li>
                     <?php if (isAdmin()): ?>
                         <li><a href="../admin.php">Admin</a></li>
@@ -59,6 +62,10 @@
             <input type="hidden" name="action" value="update_event">
             <input type="hidden" name="from" value="<?php echo htmlspecialchars($from ?? ''); ?>">
             <h2 style="text-align: center; margin-bottom: 30px;">Modifier l'Evenement</h2>
+            <?php $editBudget = $event->getClubBudgetOverview((int)($event_info['club_id'] ?? 0)); ?>
+            <div class="alert alert-info">
+                <strong>Budget annuel restant:</strong> <?php echo number_format((float)($editBudget['remaining_amount'] ?? 0), 2, ',', ' '); ?> €
+            </div>
 
             <?php if ($error): ?>
                 <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
@@ -106,6 +113,21 @@
             <div class="form-group">
                 <label for="max_participants">Limite de participants (optionnel)</label>
                 <input type="number" id="max_participants" name="max_participants" min="1" value="<?php echo isset($event_info['max_participants']) && $event_info['max_participants'] !== null ? (int)$event_info['max_participants'] : ''; ?>" placeholder="Ex: 50">
+            </div>
+
+            <div class="form-group">
+                <label for="estimated_cost">Coût estimé de l'événement (optionnel, €)</label>
+                <input type="number" id="estimated_cost" name="estimated_cost" min="0" step="0.01" value="<?php echo htmlspecialchars((string)($event_info['estimated_cost'] ?? '')); ?>" placeholder="Ex: 125.00">
+            </div>
+
+            <div class="form-group">
+                <label for="notification_scope">Qui doit être notifié à la validation ?</label>
+                <select id="notification_scope" name="notification_scope" required>
+                    <option value="none" <?php echo (($event_info['notification_scope'] ?? '') === 'none') ? 'selected' : ''; ?>>Personne</option>
+                    <option value="responsables" <?php echo (($event_info['notification_scope'] ?? '') === 'responsables') ? 'selected' : ''; ?>>Uniquement les responsables</option>
+                    <option value="club_members" <?php echo (($event_info['notification_scope'] ?? 'club_members') === 'club_members') ? 'selected' : ''; ?>>Tous les membres du club</option>
+                    <option value="platform" <?php echo (($event_info['notification_scope'] ?? '') === 'platform') ? 'selected' : ''; ?>>Toute la plateforme</option>
+                </select>
             </div>
 
             <div class="form-group" style="display: flex; align-items: center; gap: 10px;">

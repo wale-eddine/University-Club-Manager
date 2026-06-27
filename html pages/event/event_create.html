@@ -36,6 +36,9 @@
                     <li><a href="../index.php">Accueil</a></li>
                     <li><a href="../club_php/clubs.php">Clubs</a></li>
                     <li><a href="events.php">Événements</a></li>
+                    <?php if (isLoggedIn()): ?>
+                        <li><a href="../agenda.php">Agenda</a></li>
+                    <?php endif; ?>
                     <li><a href="../dashboard.php">Dashboard</a></li>
                     <?php if (isAdmin()): ?>
                         <li><a href="../admin.php">Admin</a></li>
@@ -58,6 +61,11 @@
         <form method="POST" enctype="multipart/form-data">
             <h2 style="text-align: center; margin-bottom: 30px;">Créer un Événement</h2>
             <p style="text-align: center; margin-bottom: 30px;"><strong>Club:</strong> <?php echo htmlspecialchars($club_info['nom']); ?></p>
+            <div class="alert alert-info">
+                <strong>Budget annuel restant:</strong> <?php echo number_format((float)($budget_overview['remaining_amount'] ?? 0), 2, ',', ' '); ?> €
+                <br>
+                <small>Budget annuel du club: <?php echo number_format((float)($budget_overview['yearly_budget'] ?? 0), 2, ',', ' '); ?> € | Dépensé cette année: <?php echo number_format((float)($budget_overview['spent_amount'] ?? 0), 2, ',', ' '); ?> €</small>
+            </div>
 
             <?php if ($error): ?>
                 <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
@@ -100,6 +108,21 @@
             <div class="form-group">
                 <label for="max_participants">Limite de participants (optionnel)</label>
                 <input type="number" id="max_participants" name="max_participants" min="1" placeholder="Ex: 50">
+            </div>
+
+            <div class="form-group">
+                <label for="estimated_cost">Coût estimé de l'événement (optionnel, €)</label>
+                <input type="number" id="estimated_cost" name="estimated_cost" min="0" step="0.01" placeholder="Ex: 125.00">
+            </div>
+
+            <div class="form-group">
+                <label for="notification_scope">Qui doit être notifié à la validation ?</label>
+                <select id="notification_scope" name="notification_scope" required>
+                    <option value="none">Personne</option>
+                    <option value="responsables">Uniquement les responsables</option>
+                    <option value="club_members" selected>Tous les membres du club</option>
+                    <option value="platform">Toute la plateforme</option>
+                </select>
             </div>
 
             <div class="form-group" style="display: flex; align-items: center; gap: 10px;">

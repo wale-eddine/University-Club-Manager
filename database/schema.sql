@@ -85,11 +85,35 @@ CREATE TABLE EVENTS (
     date_fin DATETIME NOT NULL,
     lieu VARCHAR(200) NOT NULL,
     max_participants INT NULL,
+    estimated_cost DECIMAL(12,2) NULL,
     allow_non_members TINYINT(1) NOT NULL DEFAULT 0,
     is_paid_event TINYINT(1) NOT NULL DEFAULT 0,
+    approval_status ENUM('pending', 'approved', 'rejected', 'closed') NOT NULL DEFAULT 'pending',
+    notification_scope ENUM('none', 'responsables', 'club_members', 'platform') NOT NULL DEFAULT 'club_members',
+    approved_by INT NULL,
+    approved_at DATETIME NULL,
+    rejected_by INT NULL,
+    rejected_at DATETIME NULL,
+    closed_at DATETIME NULL,
+    review_email_sent_at DATETIME NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (club_id) REFERENCES CLUBS(id)
+);
+
+CREATE TABLE CLUB_YEARLY_BUDGETS (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    club_id INT NOT NULL,
+    budget_year INT NOT NULL,
+    yearly_budget DECIMAL(12,2) NOT NULL DEFAULT 0,
+    created_by INT NULL,
+    updated_by INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_club_year_budget (club_id, budget_year),
+    FOREIGN KEY (club_id) REFERENCES CLUBS(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES USERS(id) ON DELETE SET NULL,
+    FOREIGN KEY (updated_by) REFERENCES USERS(id) ON DELETE SET NULL
 );
 
 CREATE TABLE EVENT_PARTICIPANTS (
@@ -112,6 +136,18 @@ CREATE TABLE USER_NOTIFICATIONS (
     message TEXT NOT NULL,
     is_read TINYINT(1) NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES USERS(id) ON DELETE CASCADE
+);
+
+CREATE TABLE EVENT_REVIEWS (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    event_id INT NOT NULL,
+    user_id INT NOT NULL,
+    rating TINYINT NOT NULL,
+    feedback TEXT NULL,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_event_user_review (event_id, user_id),
+    FOREIGN KEY (event_id) REFERENCES EVENTS(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES USERS(id) ON DELETE CASCADE
 );
 

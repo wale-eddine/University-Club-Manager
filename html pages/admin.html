@@ -270,6 +270,9 @@
                     <li><a href="index.php">Accueil</a></li>
                     <li><a href="club_php/clubs.php">Clubs</a></li>
                     <li><a href="event_php/events.php">Événements</a></li>
+                    <?php if (isLoggedIn()): ?>
+                        <li><a href="agenda.php">Agenda</a></li>
+                    <?php endif; ?>
                     <li><a href="dashboard.php">Dashboard</a></li>
                     <li><a href="admin.php" aria-current="page">Admin</a></li>
                     <li class="profile-menu <?php echo $profileNotif['has_pending'] ? 'has-pending' : ''; ?>">
@@ -298,6 +301,217 @@
         <?php if (!empty($error)): ?>
             <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
+
+        <div class="dashboard-section">
+            <h3>Événements en attente de validation</h3>
+            <p class="admin-section-note">Les événements restent en brouillon jusqu'à approbation par l'admin. Le sélecteur de notification définit qui reçoit l'email et la notification interne à la publication.</p>
+            <?php if (empty($pendingEvents)): ?>
+                <p class="admin-section-note">Aucun événement en attente.</p>
+            <?php else: ?>
+                <div class="admin-table-wrap">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Événement</th>
+                                <th>Club</th>
+                                <th>Date</th>
+                                <th>Coût estimé</th>
+                                <th>Notifications</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($pendingEvents as $pendingEvent): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($pendingEvent['titre']); ?></td>
+                                    <td><?php echo htmlspecialchars($pendingEvent['club_nom']); ?></td>
+                                    <td><?php echo htmlspecialchars(date('d/m/Y H:i', strtotime((string)$pendingEvent['date_debut']))); ?></td>
+                                    <td><?php echo number_format((float)($pendingEvent['estimated_cost'] ?? 0), 2, ',', ' '); ?> €</td>
+                                    <td>
+                                        <form method="POST" class="admin-actions" style="justify-content: flex-start;">
+                                            <input type="hidden" name="action" value="approve_event">
+                                            <input type="hidden" name="event_id" value="<?php echo (int)$pendingEvent['id']; ?>">
+                                            <select name="notification_scope" required>
+                                                <option value="none">Personne</option>
+                                                <option value="responsables">Responsables</option>
+                                                <option value="club_members" selected>Membres du club</option>
+                                                <option value="platform">Toute la plateforme</option>
+                                            </select>
+                                    </td>
+                                    <td>
+                                            <button type="submit" class="btn btn-success btn-sm">Approuver</button>
+                                        </form>
+                                        <form method="POST" style="margin-top: 8px;">
+                                            <input type="hidden" name="action" value="reject_event">
+                                            <input type="hidden" name="event_id" value="<?php echo (int)$pendingEvent['id']; ?>">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">Rejeter</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <div class="dashboard-section">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <h3 class="mb-0">Budgets annuels des clubs</h3>
+                <form method="GET" class="d-flex align-items-center gap-2" style="background: #f8fafc; padding: 6px 12px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                    <label for="budget_year_select" class="fw-bold text-nowrap" style="font-size: 0.9rem; color: #475569; margin-bottom: 0;">Année budgétaire :</label>
+                    <select name="budget_year" id="budget_year_select" class="form-select form-select-sm" style="width: 100px; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: 500;" onchange="this.form.submit()">
+                        <?php
+                        $currentYear = (int)date('Y');
+                        for ($y = $currentYear + 2; $y >= 2020; $y--) {
+                            $selected = ($y === (int)$viewBudgetYear) ? 'selected' : '';
+                            echo "<option value=\"$y\" $selected>$y</option>";
+                        }
+                        ?>
+                    </select>
+                </form>
+            </div>
+            <p class="admin-section-note">Seul l'admin peut ajuster les budgets annuels. Le budget consommé ne compte que les événements approuvés avec coût estimé. Sélectionnez une année budgétaire pour voir ou définir les budgets de cette période.</p>
+            <div class="admin-table-wrap">
+                <table class="admin-table" id="budgets-admin-table" style="table-layout: auto; width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Club</th>
+                            <th>Année</th>
+                            <th>Budget total</th>
+                            <th>Dépensé</th>
+                            <th>Restant</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($clubs as $club): ?>
+                            <?php $clubBudget = $clubBudgets[(int)$club['id']] ?? ['budget_year' => $viewBudgetYear, 'yearly_budget' => 0.0, 'spent_amount' => 0.0, 'remaining_amount' => 0.0]; ?>
+                            <tr>
+                                <td style="vertical-align: middle;"><?php echo htmlspecialchars($club['nom']); ?></td>
+                                <td style="vertical-align: middle;"><?php echo (int)$viewBudgetYear; ?></td>
+                                <td style="vertical-align: middle;">
+                                    <div class="d-flex align-items-center gap-1">
+                                        <input type="number" name="yearly_budget" min="0" step="0.01" value="<?php echo htmlspecialchars((string)($clubBudget['yearly_budget'] ?? 0)); ?>" style="width: 120px; text-align: right; padding: 4px 8px; border: 1px solid #d7deea; border-radius: 8px;" form="budget-form-<?php echo (int)$club['id']; ?>" required>
+                                        <span>€</span>
+                                    </div>
+                                </td>
+                                <td style="vertical-align: middle;"><?php echo number_format((float)($clubBudget['spent_amount'] ?? 0), 2, ',', ' '); ?> €</td>
+                                <td style="vertical-align: middle;"><?php echo number_format((float)($clubBudget['remaining_amount'] ?? 0), 2, ',', ' '); ?> €</td>
+                                <td style="vertical-align: middle;">
+                                    <form id="budget-form-<?php echo (int)$club['id']; ?>" method="POST" class="admin-actions" style="justify-content: flex-start; margin-bottom: 0;">
+                                        <input type="hidden" name="action" value="set_club_budget">
+                                        <input type="hidden" name="club_id" value="<?php echo (int)$club['id']; ?>">
+                                        <input type="hidden" name="budget_year" value="<?php echo (int)$viewBudgetYear; ?>">
+                                        <button type="submit" class="btn btn-primary btn-sm" style="border-radius: 8px; padding: 6px 12px; white-space: nowrap;">Enregistrer</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="dashboard-section">
+            <h3>Agenda des événements</h3>
+            <p class="admin-section-note">Vue annuelle des événements approuvés et terminés. Les responsables et l'admin peuvent s'en servir pour éviter les chevauchements.</p>
+            <?php if (empty($agendaEvents)): ?>
+                <p class="admin-section-note">Aucun événement planifié pour l'année en cours.</p>
+            <?php else: ?>
+                <div class="admin-toolbar" style="grid-template-columns: 1fr; margin-bottom: 16px; max-width: 400px;">
+                    <div class="form-group">
+                        <label for="agenda-club-filter" style="display: block; margin-bottom: 6px; font-size: 0.9rem; font-weight: 500;">Filtrer par Club</label>
+                        <select id="agenda-club-filter" class="form-select" style="width: 100%;">
+                            <option value="none" selected>Sélectionnez un club...</option>
+                            <?php foreach ($clubs as $club): ?>
+                                <option value="<?php echo (int)$club['id']; ?>"><?php echo htmlspecialchars($club['nom']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <p id="agenda-table-empty-state" class="admin-section-note" style="margin-top: 8px;">Veuillez sélectionner un club pour afficher ses événements.</p>
+
+                <div class="admin-table-wrap" id="agenda-table-wrap" style="display: none;">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Événement</th>
+                                <th>Club</th>
+                                <th>Début</th>
+                                <th>Fin</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($agendaEvents as $agendaEvent): ?>
+                                <tr data-club-id="<?php echo (int)$agendaEvent['club_id']; ?>">
+                                    <td><?php echo htmlspecialchars($agendaEvent['titre']); ?></td>
+                                    <td><?php echo htmlspecialchars($agendaEvent['club_nom']); ?></td>
+                                    <td><?php echo htmlspecialchars(date('d/m/Y H:i', strtotime((string)$agendaEvent['date_debut']))); ?></td>
+                                    <td><?php echo htmlspecialchars(date('d/m/Y H:i', strtotime((string)$agendaEvent['date_fin']))); ?></td>
+                                    <td><?php echo htmlspecialchars($eventModel->getEventStatusLabel($agendaEvent)); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <div class="dashboard-section">
+            <h3>Retours post-événement</h3>
+            <p class="admin-section-note">Les participants reçoivent un email après la fermeture et leurs réponses sont agrégées ici.</p>
+            <?php if (empty($reviewSummaries)): ?>
+                <p class="admin-section-note">Aucun retour disponible.</p>
+            <?php else: ?>
+                <div class="admin-toolbar" style="grid-template-columns: 1fr; margin-bottom: 16px; max-width: 400px;">
+                    <div class="form-group">
+                        <label for="feedback-club-filter" style="display: block; margin-bottom: 6px; font-size: 0.9rem; font-weight: 500;">Filtrer par Club</label>
+                        <select id="feedback-club-filter" class="form-select" style="width: 100%;">
+                            <option value="none" selected>Sélectionnez un club...</option>
+                            <?php foreach ($clubs as $club): ?>
+                                <option value="<?php echo (int)$club['id']; ?>"><?php echo htmlspecialchars($club['nom']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <p id="feedback-table-empty-state" class="admin-section-note" style="margin-top: 8px;">Veuillez sélectionner un club pour afficher ses retours post-événement.</p>
+
+                <div class="admin-table-wrap" id="feedback-table-wrap" style="display: none;">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Événement</th>
+                                <th>Club</th>
+                                <th>Moyenne</th>
+                                <th>Réponses</th>
+                                <th>Répartition</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($reviewSummaries as $reviewSummary): ?>
+                                <tr data-club-id="<?php echo (int)$reviewSummary['club_id']; ?>">
+                                    <td><?php echo htmlspecialchars($reviewSummary['titre']); ?></td>
+                                    <td><?php echo htmlspecialchars($reviewSummary['club_nom']); ?></td>
+                                    <td><?php echo number_format((float)($reviewSummary['average_rating'] ?? 0), 2, ',', ' '); ?>/5</td>
+                                    <td><?php echo (int)($reviewSummary['review_count'] ?? 0); ?></td>
+                                    <td>
+                                        V1: <?php echo (int)($reviewSummary['very_bad_count'] ?? 0); ?> |
+                                        V2: <?php echo (int)($reviewSummary['bad_count'] ?? 0); ?> |
+                                        V3: <?php echo (int)($reviewSummary['neutral_count'] ?? 0); ?> |
+                                        V4: <?php echo (int)($reviewSummary['good_count'] ?? 0); ?> |
+                                        V5: <?php echo (int)($reviewSummary['very_good_count'] ?? 0); ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
 
         <div class="dashboard-section">
             <h3>Utilisateurs</h3>
@@ -1677,6 +1891,98 @@
             hideAllUserSaveButtons();
             if (directAddSubmit && directStudentsData.length === 0) {
                 directAddSubmit.disabled = true;
+            }
+
+            // Agenda des événements filter
+            const agendaClubFilter = document.getElementById('agenda-club-filter');
+            const agendaTableWrap = document.getElementById('agenda-table-wrap');
+            const agendaEmptyState = document.getElementById('agenda-table-empty-state');
+            const agendaRows = document.querySelectorAll('#agenda-table-wrap tbody tr');
+
+            function applyAgendaFilter() {
+                if (!agendaClubFilter) return;
+                const selectedClubId = agendaClubFilter.value;
+                if (selectedClubId === 'none') {
+                    if (agendaTableWrap) agendaTableWrap.style.display = 'none';
+                    if (agendaEmptyState) {
+                        agendaEmptyState.style.display = 'block';
+                        agendaEmptyState.textContent = 'Veuillez sélectionner un club pour afficher ses événements.';
+                    }
+                    return;
+                }
+
+                let visibleCount = 0;
+                agendaRows.forEach(function (row) {
+                    const rowClubId = row.getAttribute('data-club-id');
+                    if (rowClubId === selectedClubId) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+
+                if (visibleCount === 0) {
+                    if (agendaTableWrap) agendaTableWrap.style.display = 'none';
+                    if (agendaEmptyState) {
+                        agendaEmptyState.style.display = 'block';
+                        agendaEmptyState.textContent = 'Aucun événement planifié pour ce club.';
+                    }
+                } else {
+                    if (agendaTableWrap) agendaTableWrap.style.display = 'block';
+                    if (agendaEmptyState) agendaEmptyState.style.display = 'none';
+                }
+            }
+
+            if (agendaClubFilter) {
+                agendaClubFilter.addEventListener('change', applyAgendaFilter);
+                applyAgendaFilter();
+            }
+
+            // Retours post-événement filter
+            const feedbackClubFilter = document.getElementById('feedback-club-filter');
+            const feedbackTableWrap = document.getElementById('feedback-table-wrap');
+            const feedbackEmptyState = document.getElementById('feedback-table-empty-state');
+            const feedbackRows = document.querySelectorAll('#feedback-table-wrap tbody tr');
+
+            function applyFeedbackFilter() {
+                if (!feedbackClubFilter) return;
+                const selectedClubId = feedbackClubFilter.value;
+                if (selectedClubId === 'none') {
+                    if (feedbackTableWrap) feedbackTableWrap.style.display = 'none';
+                    if (feedbackEmptyState) {
+                        feedbackEmptyState.style.display = 'block';
+                        feedbackEmptyState.textContent = 'Veuillez sélectionner un club pour afficher ses retours post-événement.';
+                    }
+                    return;
+                }
+
+                let visibleCount = 0;
+                feedbackRows.forEach(function (row) {
+                    const rowClubId = row.getAttribute('data-club-id');
+                    if (rowClubId === selectedClubId) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+
+                if (visibleCount === 0) {
+                    if (feedbackTableWrap) feedbackTableWrap.style.display = 'none';
+                    if (feedbackEmptyState) {
+                        feedbackEmptyState.style.display = 'block';
+                        feedbackEmptyState.textContent = "Aucun retour d'événement disponible pour ce club.";
+                    }
+                } else {
+                    if (feedbackTableWrap) feedbackTableWrap.style.display = 'block';
+                    if (feedbackEmptyState) feedbackEmptyState.style.display = 'none';
+                }
+            }
+
+            if (feedbackClubFilter) {
+                feedbackClubFilter.addEventListener('change', applyFeedbackFilter);
+                applyFeedbackFilter();
             }
         });
     </script>

@@ -16,7 +16,7 @@ $search = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $search = isset($_POST['search']) ? trim($_POST['search']) : '';
 }
-$events = !empty($search) ? $event->searchEvents($search) : $event->getAllEvents();
+$events = !empty($search) ? $event->searchEvents($search) : $event->getPublicEvents();
 
 // Load clubs owned by current user for quick event actions.
 $responsable_clubs = [];

@@ -36,6 +36,9 @@
                     <li><a href="index.php">Accueil</a></li>
                     <li><a href="club_php/clubs.php">Clubs</a></li>
                     <li><a href="event_php/events.php">Événements</a></li>
+                    <?php if (isLoggedIn()): ?>
+                        <li><a href="agenda.php">Agenda</a></li>
+                    <?php endif; ?>
                     <li><a href="dashboard.php">Dashboard</a></li>
                     <?php if (isAdmin()): ?>
                         <li><a href="admin.php">Admin</a></li>
@@ -63,6 +66,7 @@
         <?php if (isAdmin()): ?>
             <div class="dashboard-section" style="text-align: center; margin-bottom: 20px;">
                 <a href="admin.php" class="btn btn-success">Ouvrir le panneau d'administration</a>
+                <a href="agenda.php" class="btn btn-outline-secondary btn-grey-press">Ouvrir l'agenda</a>
             </div>
         <?php endif; ?>
 
@@ -138,6 +142,7 @@
         <?php if (count($responsable_clubs) > 0 || isAdmin()): ?>
             <div class="dashboard-section">
                 <h3><?php echo isAdmin() ? 'Clubs à superviser' : 'Mes Clubs Responsable'; ?> (<?php echo count($responsable_clubs); ?>)</h3>
+                <p><a href="agenda.php" class="btn btn-outline-secondary btn-grey-press">Voir l'agenda annuel</a></p>
 
                 <?php if (count($responsable_clubs) > 0): ?>
                     <div class="club-carousel events-carousel" data-events-carousel>

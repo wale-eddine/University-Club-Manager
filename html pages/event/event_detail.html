@@ -37,6 +37,9 @@
                     <li><a href="../club_php/clubs.php">Clubs</a></li>
                     <li><a href="events.php">Événements</a></li>
                     <?php if (isLoggedIn()): ?>
+                        <li><a href="../agenda.php">Agenda</a></li>
+                    <?php endif; ?>
+                    <?php if (isLoggedIn()): ?>
 <li><a href="../dashboard.php">Dashboard</a></li>
                         <?php if (isAdmin()): ?>
                             <li><a href="../admin.php">Admin</a></li>
@@ -67,6 +70,16 @@
     <main class="container">
         <div class="page-title">
             <h2><?php echo htmlspecialchars($event_info['titre']); ?></h2>
+        </div>
+
+        <div class="dashboard-section" style="margin-bottom: 20px;">
+            <p><strong>Statut:</strong> <?php echo htmlspecialchars($event->getEventStatusLabel($event_info)); ?></p>
+            <?php if (isset($event_info['estimated_cost']) && $event_info['estimated_cost'] !== null): ?>
+                <p><strong>Coût estimé:</strong> <?php echo number_format((float)$event_info['estimated_cost'], 2, ',', ' '); ?> €</p>
+            <?php endif; ?>
+            <?php if (!empty($event_info['notification_scope'])): ?>
+                <p><strong>Notifications à la publication:</strong> <?php echo htmlspecialchars((string)$event_info['notification_scope']); ?></p>
+            <?php endif; ?>
         </div>
 
         <?php if (!empty($message)): ?>
@@ -106,7 +119,7 @@
                         <?php if ($is_participant): ?>
                             <button type="submit" name="action" value="cancel" class="btn btn-outline-danger">Annuler l'Inscription</button>
                         <?php else: ?>
-                            <?php if ((int)($event_info['allow_non_members'] ?? 0) === 1 || $is_club_member || $can_manage_event): ?>
+                            <?php if (!empty($event_join_allowed) && ((int)($event_info['allow_non_members'] ?? 0) === 1 || $is_club_member || $can_manage_event)): ?>
                                 <button type="submit" name="action" value="join" class="btn btn-success">S'Inscrire à l'Événement</button>
                             <?php else: ?>
                                 <span class="badge badge-primary">Réservé aux membres du club</span>

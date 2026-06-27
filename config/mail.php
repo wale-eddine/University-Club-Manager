@@ -76,80 +76,118 @@ function sendSmtpMail($toEmail, $subject, $htmlBody, $textBody, $config) {
     $username = $config['smtp_username'];
     $password = $config['smtp_password'];
 
+    $fallback = function() use ($toEmail, $subject, $htmlBody, $config) {
+        if (is_array($toEmail)) {
+            $headers_native = "From: " . $config['from_name'] . " <" . $config['from_email'] . ">\r\n";
+            $headers_native .= "Bcc: " . implode(', ', $toEmail) . "\r\n";
+            $headers_native .= "MIME-Version: 1.0\r\n";
+            $headers_native .= "Content-Type: text/html; charset=UTF-8\r\n";
+            return @mail($config['from_email'], $subject, $htmlBody, $headers_native);
+        } else {
+            $headers_native = "From: " . $config['from_name'] . " <" . $config['from_email'] . ">\r\n";
+            $headers_native .= "MIME-Version: 1.0\r\n";
+            $headers_native .= "Content-Type: text/html; charset=UTF-8\r\n";
+            return @mail($toEmail, $subject, $htmlBody, $headers_native);
+        }
+    };
+
     if ($host === '' || $username === '' || $password === '') {
-        setLastMailError('SMTP config missing host/username/password.');
-        return false;
+        setLastMailError('SMTP config missing host/username/password. Trying native fallback.');
+        return $fallback();
     }
 
-    $socket = @stream_socket_client($host . ':' . $port, $errno, $errstr, 20, STREAM_CLIENT_CONNECT);
+    $context = stream_context_create([
+        'ssl' => [
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+            'allow_self_signed' => true,
+        ]
+    ]);
+
+    $socket = @stream_socket_client($host . ':' . $port, $errno, $errstr, 20, STREAM_CLIENT_CONNECT, $context);
     if (!$socket) {
-        setLastMailError('SMTP connection failed: ' . $errstr . ' (' . $errno . ')');
-        return false;
+        setLastMailError('SMTP connection failed: ' . $errstr . ' (' . $errno . '). Trying native fallback.');
+        return $fallback();
     }
 
     stream_set_timeout($socket, 20);
     $greeting = smtpReadResponse($socket);
     if (strpos($greeting, '220') !== 0) {
-        setLastMailError('SMTP greeting invalid: ' . trim($greeting));
+        setLastMailError('SMTP greeting invalid: ' . trim($greeting) . '. Trying native fallback.');
         fclose($socket);
-        return false;
+        return $fallback();
     }
 
     if (!smtpCommand($socket, 'EHLO localhost', 250)) {
         fclose($socket);
-        return false;
+        return $fallback();
     }
 
     if (!smtpCommand($socket, 'STARTTLS', 220)) {
         fclose($socket);
-        return false;
+        return $fallback();
     }
 
     if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
-        setLastMailError('SMTP TLS negotiation failed.');
+        setLastMailError('SMTP TLS negotiation failed. Trying native fallback.');
         fclose($socket);
-        return false;
+        return $fallback();
     }
 
     if (!smtpCommand($socket, 'EHLO localhost', 250)) {
         fclose($socket);
-        return false;
+        return $fallback();
     }
 
     if (!smtpCommand($socket, 'AUTH LOGIN', 334)) {
         fclose($socket);
-        return false;
+        return $fallback();
     }
 
     if (!smtpCommand($socket, base64_encode($username), 334)) {
         fclose($socket);
-        return false;
+        return $fallback();
     }
 
     if (!smtpCommand($socket, base64_encode($password), 235)) {
         fclose($socket);
-        return false;
+        return $fallback();
     }
 
     if (!smtpCommand($socket, 'MAIL FROM:<' . $config['from_email'] . '>', 250)) {
         fclose($socket);
-        return false;
+        return $fallback();
     }
 
-    if (!smtpCommand($socket, 'RCPT TO:<' . $toEmail . '>', 250)) {
+    $recipients = is_array($toEmail) ? $toEmail : [$toEmail];
+    $rcptSuccess = false;
+    foreach ($recipients as $recipient) {
+        if (trim($recipient) !== '') {
+            if (smtpCommand($socket, 'RCPT TO:<' . trim($recipient) . '>', 250)) {
+                $rcptSuccess = true;
+            }
+        }
+    }
+
+    if (!$rcptSuccess) {
+        setLastMailError('All SMTP recipients failed.');
         fclose($socket);
-        return false;
+        return $fallback();
     }
 
     if (!smtpCommand($socket, 'DATA', 354)) {
         fclose($socket);
-        return false;
+        return $fallback();
     }
 
     $boundary = 'b1_' . bin2hex(random_bytes(8));
     $headers = [];
     $headers[] = 'From: ' . $config['from_name'] . ' <' . $config['from_email'] . '>';
-    $headers[] = 'To: <' . $toEmail . '>';
+    if (is_array($toEmail)) {
+        $headers[] = 'To: <' . $config['from_email'] . '>';
+    } else {
+        $headers[] = 'To: <' . $toEmail . '>';
+    }
     $headers[] = 'Subject: =?UTF-8?B?' . base64_encode($subject) . '?=';
     $headers[] = 'MIME-Version: 1.0';
     $headers[] = 'Content-Type: multipart/alternative; boundary="' . $boundary . '"';
@@ -177,7 +215,8 @@ function sendSmtpMail($toEmail, $subject, $htmlBody, $textBody, $config) {
 
     $ok = strpos($dataResponse, '250') === 0;
     if (!$ok) {
-        setLastMailError('SMTP DATA rejected: ' . trim($dataResponse));
+        setLastMailError('SMTP DATA rejected: ' . trim($dataResponse) . '. Trying native fallback.');
+        return $fallback();
     }
 
     return $ok;

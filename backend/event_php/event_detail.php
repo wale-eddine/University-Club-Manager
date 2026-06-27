@@ -44,6 +44,18 @@ if (!$event_info) {
     exit();
 }
 
+$event_status = (string)($event_info['approval_status'] ?? 'pending');
+$can_view_event_details = isAdmin() || canManageClubById((int)$event_info['club_id']);
+if (in_array($event_status, ['pending', 'rejected'], true) && !$can_view_event_details) {
+    header("Location: ../event_php/events.php");
+    exit();
+}
+if ($event_status === 'closed' && !$can_view_event_details) {
+    header("Location: ../event_php/events.php");
+    exit();
+}
+$event_join_allowed = $event_status === 'approved';
+
 $participantSortBy = strtolower((string)($_GET['participant_sort_by'] ?? 'date'));
 if (!in_array($participantSortBy, ['date', 'role', 'payment_date'], true)) {
     $participantSortBy = 'date';

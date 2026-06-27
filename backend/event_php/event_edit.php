@@ -161,6 +161,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $max_participants = null;
     $allow_non_members = isset($_POST['allow_non_members']) ? 1 : 0;
     $is_paid_event = isset($_POST['is_paid_event']) ? 1 : 0;
+    $estimated_cost_raw = trim($_POST['estimated_cost'] ?? '');
+    $estimated_cost = $estimated_cost_raw !== '' ? (float)$estimated_cost_raw : null;
+    $notification_scope = $_POST['notification_scope'] ?? null;
 
     if (empty($titre) || empty($description) || empty($date_debut) || empty($date_fin) || empty($lieu)) {
         $error = 'Veuillez remplir tous les champs.';
@@ -180,6 +183,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Upload image if provided and persist event updates.
     if (empty($error)) {
+        // Budget validation check for non-admins
+        if (!isAdmin() && $estimated_cost !== null) {
+            $eventYear = (int)date('Y', strtotime($date_debut));
+            $budget_overview = $event->getClubBudgetOverview((int)$event_info['club_id'], $eventYear);
+            $remaining = (float)($budget_overview['remaining_amount'] ?? 0);
+            
+            // If the event was already approved/closed and the year hasn't changed, its original cost is already in spent_amount.
+            // We add it back to the available pool to check if the new cost fits.
+            $isAlreadyApproved = in_array(($event_info['approval_status'] ?? ''), ['approved', 'closed'], true);
+            $originalYear = (int)date('Y', strtotime((string)$event_info['date_debut']));
+            $originalCost = ($isAlreadyApproved && $eventYear === $originalYear) ? (float)($event_info['estimated_cost'] ?? 0) : 0.0;
+            $availableBudget = $remaining + $originalCost;
+            
+            if ($estimated_cost > $availableBudget) {
+                $error = 'Le coût estimé de cet événement (' . number_format($estimated_cost, 2, ',', ' ') . ' €) dépasse le budget restant du club pour l\'année ' . $eventYear . ' (' . number_format($availableBudget, 2, ',', ' ') . ' €).';
+            }
+        }
+    }
+
+    if (empty($error)) {
         [$newImagePath, $uploadError] = uploadEventImageForEdit($_FILES['image'] ?? null);
         if (!empty($uploadError)) {
             $error = $uploadError;
@@ -193,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $previousImagePath = $event_info['image_path'] ?? null;
         $imageToSave = $newImagePath ?? $previousImagePath;
 
-        if ($event->updateEvent($event_id, $titre, $description, $date_debut, $date_fin, $lieu, $imageToSave, $max_participants, $allow_non_members, $is_paid_event)) {
+        if ($event->updateEvent($event_id, $titre, $description, $date_debut, $date_fin, $lieu, $imageToSave, $max_participants, $allow_non_members, $is_paid_event, $estimated_cost, $notification_scope)) {
             if (isResponsable()) {
                 $actionLog->logAction(
                     (int)getCurrentUserId(),
@@ -214,8 +237,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $event_info['date_fin'] = $date_fin;
             $event_info['lieu'] = $lieu;
             $event_info['max_participants'] = $max_participants;
+            $event_info['estimated_cost'] = $estimated_cost;
             $event_info['allow_non_members'] = $allow_non_members;
             $event_info['is_paid_event'] = $is_paid_event;
+            if ($notification_scope !== null) {
+                $event_info['notification_scope'] = $notification_scope;
+            }
             $event_info['image_path'] = $imageToSave;
 
             if ($newImagePath !== null) {

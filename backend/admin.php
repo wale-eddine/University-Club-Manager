@@ -4,6 +4,7 @@ require_once('../classes/session.php');
 require_once('../config/Database.php');
 require_once('../classes/User.php');
 require_once('../classes/Club.php');
+require_once('../classes/Event.php');
 require_once('../classes/ActionLog.php');
 
 // Block access for non-admin users.
@@ -18,6 +19,7 @@ $db = new Database();
 $connection = $db->getConnection();
 $userModel = new User($connection);
 $clubModel = new Club($connection);
+$eventModel = new Event($connection);
 $actionLogModel = new ActionLog($connection);
 
 $success = $_SESSION['admin_flash_success'] ?? '';
@@ -27,7 +29,7 @@ unset($_SESSION['admin_flash_success'], $_SESSION['admin_flash_error']);
 $currentUserId = (int)getCurrentUserId();
 
 // Normalize a flash redirect back to the admin page.
-function adminRedirect($success = '', $error = '') {
+function adminRedirect($success = '', $error = '', $query = '') {
     if ($success !== '') {
         $_SESSION['admin_flash_success'] = $success;
     }
@@ -35,7 +37,7 @@ function adminRedirect($success = '', $error = '') {
         $_SESSION['admin_flash_error'] = $error;
     }
 
-    header('Location: admin.php');
+    header('Location: admin.php' . $query);
     exit();
 }
 
@@ -416,6 +418,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         adminRedirect('', 'Impossible d\'ajouter ce responsable au club.');
     }
 
+    if ($action === 'approve_event' && isAdmin()) {
+        $eventId = getAdminUserId($_POST['event_id'] ?? 0);
+        $notificationScope = (string)($_POST['notification_scope'] ?? 'club_members');
+        $result = $eventModel->approveEvent($eventId, $currentUserId, $notificationScope);
+        if ($result['success']) {
+            $approvedEvent = $eventModel->getEventById($eventId);
+            if ($approvedEvent) {
+                $actionLogModel->logAction($currentUserId, 'admin', 'approve_event', 'event', $eventId, (string)($approvedEvent['titre'] ?? ('Evenement #' . $eventId)), (int)($approvedEvent['club_id'] ?? 0), $eventId, 'Publication de l\'événement avec notifications: ' . $notificationScope . '.');
+            }
+            adminRedirect($result['message'], '');
+        }
+        adminRedirect('', $result['message']);
+    }
+
+    if ($action === 'reject_event' && isAdmin()) {
+        $eventId = getAdminUserId($_POST['event_id'] ?? 0);
+        $result = $eventModel->rejectEvent($eventId, $currentUserId);
+        if ($result['success']) {
+            $rejectedEvent = $eventModel->getEventById($eventId);
+            if ($rejectedEvent) {
+                $actionLogModel->logAction($currentUserId, 'admin', 'reject_event', 'event', $eventId, (string)($rejectedEvent['titre'] ?? ('Evenement #' . $eventId)), (int)($rejectedEvent['club_id'] ?? 0), $eventId, 'Rejet de l\'événement en attente.');
+            }
+            adminRedirect($result['message'], '');
+        }
+        adminRedirect('', $result['message']);
+    }
+
+    if ($action === 'set_club_budget' && isAdmin()) {
+        $clubId = getAdminUserId($_POST['club_id'] ?? 0);
+        $budgetYear = (int)($_POST['budget_year'] ?? date('Y'));
+        $yearlyBudget = (float)($_POST['yearly_budget'] ?? 0);
+        if ($clubId <= 0 || $budgetYear <= 0) {
+            adminRedirect('', 'Club ou année invalide.');
+        }
+        if ($eventModel->upsertClubYearlyBudget($clubId, $budgetYear, $yearlyBudget, $currentUserId)) {
+            $actionLogModel->logAction($currentUserId, 'admin', 'set_club_budget', 'club', $clubId, (string)($clubModel->getClubById($clubId)['nom'] ?? ('Club #' . $clubId)), $clubId, null, 'Budget annuel ' . $budgetYear . ' fixé à ' . number_format($yearlyBudget, 2, '.', '') . '.');
+            adminRedirect('Budget annuel mis à jour.', '', '?budget_year=' . $budgetYear);
+        }
+        adminRedirect('', 'Impossible de mettre à jour le budget annuel.', '?budget_year=' . $budgetYear);
+    }
+
     if ($action === 'remove_responsible') {
         $clubId = getAdminUserId($_POST['club_id'] ?? 0);
         $responsibleId = getAdminUserId($_POST['responsable_id'] ?? 0);
@@ -512,6 +555,20 @@ $responsableUsers = $syncData['responsableUsers'];
 $directStudents = $syncData['directStudents'];
 $clubs = $syncData['clubs'];
 $clubResponsablesMap = $syncData['clubResponsablesMap'];
+$pendingEvents = $eventModel->getPendingEvents();
+$agendaEvents = $eventModel->getAgendaEvents();
+$reviewSummaries = $eventModel->getEventReviewSummaries(30);
+$viewBudgetYear = (int)($_GET['budget_year'] ?? date('Y'));
+if ($viewBudgetYear < 2020) {
+    $viewBudgetYear = (int)date('Y');
+}
+$clubBudgets = [];
+foreach ($clubs as $clubItem) {
+    $clubId = (int)($clubItem['id'] ?? 0);
+    if ($clubId > 0) {
+        $clubBudgets[$clubId] = $eventModel->getClubBudgetOverview($clubId, $viewBudgetYear);
+    }
+}
 $responsableUsersJson = json_encode($syncData['responsableUsersPayload'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 $directStudentsJson = json_encode($syncData['directStudentsPayload'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 $actionLogs = $actionLogModel->getRecentLogs(200);

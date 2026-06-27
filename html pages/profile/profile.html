@@ -36,6 +36,9 @@
                     <li><a href="../index.php">Accueil</a></li>
                     <li><a href="../club_php/clubs.php">Clubs</a></li>
                     <li><a href="../event_php/events.php">Événements</a></li>
+                    <?php if (isLoggedIn()): ?>
+                        <li><a href="../agenda.php">Agenda</a></li>
+                    <?php endif; ?>
                     <li><a href="../dashboard.php">Dashboard</a></li>
                     <?php if (isAdmin()): ?>
                         <li><a href="../admin.php">Admin</a></li>
@@ -87,6 +90,58 @@
             </div>
 
             <button type="submit" class="btn btn-primary btn-grey-press w-100" style="margin-bottom: 15px;">Modifier</button>
+
+            <?php
+                $hasGoogleCalendar = !empty($user_info['google_refresh_token']);
+                $calendarSync = (int)($user_info['google_calendar_sync'] ?? 0);
+            ?>
+
+            <!-- Google Calendar Integration Section -->
+            <div style="margin: 24px 0; padding: 20px; border-radius: 12px; background: linear-gradient(135deg, #f8f9fa 0%, #e8edf3 100%); border: 1px solid #dee2e6;">
+                <h4 style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px; font-size: 1.05rem;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;">
+                        <rect x="3" y="4" width="18" height="18" rx="3" stroke="#1f6feb" stroke-width="2"/>
+                        <path d="M3 9h18" stroke="#1f6feb" stroke-width="2"/>
+                        <path d="M9 4V2M15 4V2" stroke="#1f6feb" stroke-width="2" stroke-linecap="round"/>
+                        <circle cx="8" cy="14" r="1.5" fill="#34a853"/>
+                        <circle cx="12" cy="14" r="1.5" fill="#4285f4"/>
+                        <circle cx="16" cy="14" r="1.5" fill="#ea4335"/>
+                    </svg>
+                    Google Calendar
+                </h4>
+
+                <?php if ($hasGoogleCalendar): ?>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #34a853;"></span>
+                        <span style="color: #34a853; font-weight: 500;">Connecté</span>
+                    </div>
+
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.92rem;">
+                            <input type="checkbox" name="google_calendar_sync" value="1" <?php echo $calendarSync ? 'checked' : ''; ?> style="width: 18px; height: 18px; accent-color: #1f6feb;">
+                            Synchronisation automatique activée
+                        </label>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <a href="profile.php?action=disconnect_google_calendar" class="btn btn-outline-secondary btn-sm" style="font-size: 0.85rem;" onclick="return confirm('Voulez-vous déconnecter Google Calendar ?');">
+                            🔗 Déconnecter
+                        </a>
+                    </div>
+                <?php else: ?>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #dc3545;"></span>
+                        <span style="color: #6c757d; font-weight: 500;">Non connecté</span>
+                    </div>
+                    <p style="color: #6c757d; font-size: 0.88rem; margin-bottom: 12px;">
+                        Connectez votre Google Calendar pour synchroniser automatiquement les événements des clubs.
+                    </p>
+                    <a href="google_calendar_connect.php" class="btn btn-primary btn-sm" style="font-size: 0.85rem;">
+                        📅 Connecter Google Calendar
+                    </a>
+                <?php endif; ?>
+            </div>
+
             <a href="change_password.php" class="btn btn-secondary w-100" style="margin-bottom: 15px;">Changer le mot de passe</a>
 
             <p style="text-align: center;">

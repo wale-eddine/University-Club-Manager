@@ -7,6 +7,7 @@ class User {
     public function __construct($db) {
         $this->db = $db;
         $this->ensureUserManagementColumns();
+        $this->ensureGoogleCalendarColumns();
     }
 
     // Ensure account lifecycle and special id columns are available.
@@ -25,6 +26,33 @@ class User {
             $stmt = $this->db->query("SHOW COLUMNS FROM USERS LIKE 'special_id'");
             if (!($stmt && $stmt->fetch(PDO::FETCH_ASSOC))) {
                 $this->db->exec("ALTER TABLE USERS ADD COLUMN special_id VARCHAR(255) NULL AFTER email");
+            }
+        } catch (Exception $e) {
+            // Keep app running if automatic migration fails.
+        }
+    }
+
+    // Ensure Google Calendar synchronization columns are available.
+    private function ensureGoogleCalendarColumns() {
+        try {
+            $stmt = $this->db->query("SHOW COLUMNS FROM USERS LIKE 'google_access_token'");
+            if (!($stmt && $stmt->fetch(PDO::FETCH_ASSOC))) {
+                $this->db->exec("ALTER TABLE USERS ADD COLUMN google_access_token TEXT NULL AFTER avatar_url");
+            }
+
+            $stmt = $this->db->query("SHOW COLUMNS FROM USERS LIKE 'google_refresh_token'");
+            if (!($stmt && $stmt->fetch(PDO::FETCH_ASSOC))) {
+                $this->db->exec("ALTER TABLE USERS ADD COLUMN google_refresh_token TEXT NULL AFTER google_access_token");
+            }
+
+            $stmt = $this->db->query("SHOW COLUMNS FROM USERS LIKE 'google_token_expires_at'");
+            if (!($stmt && $stmt->fetch(PDO::FETCH_ASSOC))) {
+                $this->db->exec("ALTER TABLE USERS ADD COLUMN google_token_expires_at INT NULL AFTER google_refresh_token");
+            }
+
+            $stmt = $this->db->query("SHOW COLUMNS FROM USERS LIKE 'google_calendar_sync'");
+            if (!($stmt && $stmt->fetch(PDO::FETCH_ASSOC))) {
+                $this->db->exec("ALTER TABLE USERS ADD COLUMN google_calendar_sync TINYINT NOT NULL DEFAULT 1 AFTER google_token_expires_at");
             }
         } catch (Exception $e) {
             // Keep app running if automatic migration fails.

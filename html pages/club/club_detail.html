@@ -37,6 +37,9 @@
                     <li><a href="clubs.php">Clubs</a></li>
                     <li><a href="../event_php/events.php">Événements</a></li>
                     <?php if (isLoggedIn()): ?>
+                        <li><a href="../agenda.php">Agenda</a></li>
+                    <?php endif; ?>
+                    <?php if (isLoggedIn()): ?>
 <li><a href="../dashboard.php">Dashboard</a></li>
                         <?php if (isAdmin()): ?>
                             <li><a href="../admin.php">Admin</a></li>
